@@ -1,0 +1,11 @@
+*.apk
+*.aab
+*.dex
+*.jar
+*.keystore
+*.jks
+*.pem
+.DS_Store
+Thumbs.db
+*.log
+_private/
