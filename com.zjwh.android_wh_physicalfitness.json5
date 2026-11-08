@@ -1,0 +1,99 @@
+// ============================================================================
+// 运动世界校园 7.3.93 (com.zjwh.android_wh_physicalfitness) —— GKD 本地应用规则
+//
+// 本仓库唯一交付物。导入：GKD → 订阅 → 本地订阅 → 应用规则 → + ，整段粘贴
+// 用途：补上续更订阅未用 activityIds 覆盖的 com.yfanads.* 自有 ADX 广告页。
+// 本规则只在广告 Activity 白名单内生效，不做坐标点击、不用全局规则。
+//
+// 前提：安装 GKD 并开启无障碍；建议同时导入续更订阅
+//       Lin-arm/GKD_subscription，并关闭其 key 13 / 14 / 15（见 README.md）。
+// 说明：若订阅已能跳掉全部广告，不必导入本文件，避免重复点击。
+// 回退：删除本地规则组，或关掉 GKD 无障碍开关。
+// 红线：本规则只在「广告 Activity 白名单」内生效，不使用坐标点击、
+//       不使用返回键、不在跑步页面匹配任何按钮。
+// ============================================================================
+
+{
+  "id": "com.zjwh.android_wh_physicalfitness",
+  "name": "运动世界校园 7.3.93 补充",
+  "groups": [
+    {
+      "key": 100,
+      "name": "开屏广告-跳过按钮兜底",
+      // 官方全局开屏规则的选择器，但限定在本 App 内，不影响其它应用。
+      // 10 秒匹配窗口 + 每次启动最多点 1 次，防止在首页误点。
+      "fastQuery": true,
+      "matchTime": 10000,
+      "actionMaximum": 1,
+      "resetMatch": "app",
+      "rules": [
+        {
+          "key": 0,
+          "matches": "[text*=\"跳过\"][text.length<10][visibleToUser=true]"
+        }
+      ]
+    },
+    {
+      "key": 101,
+      "name": "全屏/插屏广告-关闭按钮（限广告 Activity）",
+      // 下面这些组件名来自本包 AndroidManifest 静态解析，均为广告页。
+      // 不含任何激励视频 / 奖励页 —— 不影响你主动看广告领奖励。
+      // 不含 mvi.run / mvi.sport / RunPlanActivity 等跑步与成绩页面。
+      "activityIds": [
+        ".mvi.splash.SplashActivity",
+        ".mvi.splash.AdActivity",
+        ".mvi.home.HomeActivity",
+        "com.yfanads.android.core.act.YFInterstitialActivity",
+        "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
+        "com.yfanads.android.adx.core.TransparentActivity",
+        "com.yfanads.android.adx.core.DialogProxyActivity",
+        "com.yfanads.android.adx.webview.AdxWebViewActivity",
+        "com.qq.e.ads.ADActivity",
+        "com.qq.e.ads.PortraitADActivity",
+        "com.qq.e.ads.LandscapeADActivity",
+        "com.qq.e.ads.DialogActivity",
+        "com.bytedance.sdk.openadsdk.stub.activity.Stub_Standard_Portrait_Activity",
+        "com.kwad.sdk.api.proxy.app.AdWebViewActivity"
+      ],
+      "actionCd": 1500,
+      "rules": [
+        {
+          // iv_close / ad_close / dialog_close 均已核实在本包 resources.arsc 中存在
+          "key": 0,
+          "fastQuery": true,
+          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\"][clickable=true]"
+        },
+        {
+          "key": 1,
+          "fastQuery": true,
+          "matches": "[text*=\"跳过\"][text.length<10][visibleToUser=true]"
+        }
+      ]
+    }
+
+    // ------------------------------------------------------------------------
+    // 组 102：仅当「视频广告读不到节点、上面两组都漏」时再手动启用。
+    // 启用方法：把下面整段取消注释，并在上一组末尾补一个逗号。
+    // 风险提示：action "back" 相当于按返回键；只因 activityIds 已限定为
+    //           广告 Activity 才安全，请勿把 activityIds 改成不限制。
+    //
+    // ,
+    // {
+    //   "key": 102,
+    //   "name": "视频广告-返回键兜底",
+    //   "activityIds": [
+    //     "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
+    //     "com.bytedance.sdk.openadsdk.stub.activity.Stub_Standard_Portrait_Activity"
+    //   ],
+    //   "actionCd": 3000,
+    //   "actionMaximum": 2,
+    //   "rules": [
+    //     {
+    //       "key": 0,
+    //       "action": "back",
+    //       "matches": "[text=\"广告\"][visibleToUser=true]"
+    //     }
+    //   ]
+    // }
+  ]
+}
