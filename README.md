@@ -27,11 +27,17 @@ GKD → 订阅 → + → 粘贴 URL → 确认导入
 https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5
 ```
 
-国内访问不稳时改用 jsDelivr 镜像（更新可能延迟几分钟）：
+国内访问不稳时用 fastly 节点（实测与 `main` 同步）：
 
 ```
-https://cdn.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.json5
+https://fastly.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.json5
 ```
+
+> ⚠️ **不要用 `cdn.jsdelivr.net` 节点导入订阅。** 该节点对 `@main` 有很长的缓存周期，
+> 2026-11-09 实测仍返回 **`version 1`**（加 `?v=3` 查询参数也无法绕过），会拿到带
+> `[clickable=true]`、组 102 默认禁用的最旧规则，表现就是「仓库明明更新了、广告照旧」。
+> `fastly.jsdelivr.net`、`github.com/.../raw/main/` 与固定 commit SHA 的 CDN 链接均实测返回当前版本。
+> **导入后请在 GKD 订阅页核对版本号是否为 `version: 3`**；不是就换 raw / fastly 链接重新导入。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
 后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 3`）。
@@ -140,11 +146,13 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 验证与回退
 
-1. 三个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
+1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 3`；本地粘贴的确认末尾有
+   `// === END OF FILE ===` 且组 101 有第二条「关闭」兜底规则。版本不对，后面测了也白测。
+2. 三个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
    先单独关掉组 102（其余两组继续生效）。
-2. 完整走一遍「开屏 → 首页 → 开始跑步 → 结束 → 成绩上传」，确认计时、轨迹、上传正常。
-3. 无误后再导入上游订阅（记得关闭上面 3 组），重复第 1、2 步。
-4. **关闭 GKD 的无障碍开关即完全回退**，不改包、不 root、无残留。
+3. 完整走一遍「开屏 → 首页 → 开始跑步 → 结束 → 成绩上传」，确认计时、轨迹、上传正常。
+4. 无误后再导入上游订阅（记得关闭上面 3 组），重复第 2、3 步。
+5. **关闭 GKD 的无障碍开关即完全回退**，不改包、不 root、无残留。
 
 ## 修改规则
 
@@ -162,6 +170,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 |---|---|---|
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
+| 仓库已更新但广告照旧、规则内容没变 | 用 `cdn.jsdelivr.net` 导入，订阅被缓存停在 `version 1` | 在 GKD 订阅页核对版本号；改用 raw 或 fastly 链接重新导入，`?v=` 参数不能绕过缓存 |
 | 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 3`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
 | 首页被自动退出 | 组 102 的返回键没被广告浮层消费 | 在 GKD 界面单独关掉组 102，组 100 / 101 继续生效；附快照提 issue |
 | 冷启动完全没有触发记录 | 无障碍被 vivo 回收、规则未保存成功 | 查 GKD 服务状态、电池白名单、多任务锁定；重新粘贴一次 |
