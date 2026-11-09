@@ -15,7 +15,7 @@
 {
   "id": 248879535,
   "name": "运动世界校园 7.3.93 补充规则",
-  "version": 2,
+  "version": 3,
   "author": "Hancard",
   "updateUrl": "https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5",
   "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
@@ -81,15 +81,20 @@
             {
               "key": 0,
               "fastQuery": true,
-              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\"][clickable=true]"
+              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\"][visibleToUser=true]"
+            },
+            {
+              "key": 1,
+              "fastQuery": true,
+              "matches": "[desc*=\"关闭\"][visibleToUser=true]"
             }
           ]
         },
         {
           "key": 102,
-          "name": "广告标签-返回键兜底（默认禁用）",
-          "enable": false,
-          "matchTime": 10000,
+          "name": "广告标签-返回键兜底",
+          "matchTime": 8000,
+          "resetMatch": "app",
           "activityIds": [
             "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
             "com.byazt.cef.Stub_",
@@ -99,13 +104,13 @@
             "com.adgain.sdk.base.activity.AdActivity",
             ".mvi.home.HomeActivity"
           ],
-          "actionCd": 3000,
+          "actionCd": 8000,
           "actionMaximum": 2,
           "rules": [
             {
               "key": 0,
               "action": "back",
-              "matches": "[text=\"广告\"][visibleToUser=true]"
+              "matches": "[text=\"广告\" || desc=\"广告\"][visibleToUser=true]"
             }
           ]
         }
