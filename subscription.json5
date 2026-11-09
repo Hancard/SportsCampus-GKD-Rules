@@ -3,8 +3,10 @@
 //
 // 导入：GKD → 订阅 → + → 粘贴下面这个 URL（不要复制本文件内容）
 //   https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5
-// 国内备用（jsDelivr，更新可能晚几分钟）：
-//   https://cdn.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.json5
+// 国内备用（fastly 节点，实测与 main 同步）：
+//   https://fastly.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.json5
+// ⚠️ 不要用 cdn.jsdelivr.net 节点：它对 @main 有长缓存，实测长期停在
+//    version 1（加 ?v= 查询参数也无效），会拿到带 [clickable=true] 的旧规则。
 //
 // 本订阅 apps[0].groups 与 com.zjwh.android_wh_physicalfitness.json5 完全一致。
 // 二选一：要么加这个远程订阅，要么本地粘贴应用规则，不要同时启用（会重复点击）。
