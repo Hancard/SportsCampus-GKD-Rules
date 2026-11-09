@@ -34,7 +34,7 @@ https://cdn.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.jso
 ```
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
-后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 2`）。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 3`）。
 若之前已导入过本订阅，在订阅页手动刷新一次即可拿到最新规则。
 
 ### 方式 B：本地粘贴应用规则
@@ -83,30 +83,45 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 | key | 行为 | 约束 |
 |---|---|---|
 | 100 | 开屏「跳过」文本兜底 | `matchTime 10000`、`actionMaximum 1`、`resetMatch: app`；`excludeActivityIds` 排除跑步 / 成绩 / 考试 / 定位页 |
-| 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 19 项（startWith 匹配），`actionCd 1500`；只点 9 个已核实的关闭按钮 `vid` |
-| 102 | 广告标签返回键兜底 | `enable: false` **默认禁用**；出现「广告」标签时按返回键；含首页浮层兜底，**可能退出首页**，确认有效再开 |
+| 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 19 项（startWith 匹配），`actionCd 1500`；按 9 个已核实的 `vid` 或 `desc*="关闭"` 匹配可见节点 |
+| 102 | 广告标签返回键兜底 | **默认启用**；出现「广告」标签且前两组读不到节点时按返回键；`matchTime 8000`、`actionMaximum 2`、`resetMatch: app`、`actionCd 8000` 限流 |
 
 组 100 与组 101 是**按文本 / 按资源 ID 互补**，不是同一条规则写两遍。激励视频 / 奖励页、
-`mvi.run` / `mvi.sport` / `RunPlanActivity` 均不在匹配范围内；无坐标点击、无跨应用全局规则，
-组 102 未启用时不会按返回键。
+`mvi.run` / `mvi.sport` / `RunPlanActivity` 均不在匹配范围内；无硬编码屏幕坐标、无跨应用全局规则。
+组 102 只在广告容器白名单内按返回键，**不会作用于跑步页**；若实测发现首页被误退出，
+在 GKD 界面里单独关掉组 102 即可。
 
-### 京东 JAD 互动插屏（2026-11-09 真机反馈修复）
+### 京东 JAD 互动插屏（2026-11-09 两轮真机截图反馈修复）
 
-用户截图里的「京东 JD / 60 元 PLUS 专享 / 上滑或点击按钮查看详情」弹窗，对应 APK 内的
-`assets/jad_slideup.json` 互动模板。原先漏拦有两个原因，都已修复：
+截图里的广告由多层组成：白色「京东 JD / 电脑 11.11 高潮期来袭」Dialog、60 元 PLUS 专享券
+卡片与「领券购买」、一个大的黑色圆形白 X、右下角「广告」标签与小 X、底部「上滑或点击按钮
+查看详情」手势引导。对应 APK 内的 `assets/jad_slideup.json`。
 
-1. **关闭按钮 `vid` 没覆盖**：该广告的关闭按钮是 `jad_interstitial_close` /
-   `jd_lijin_close`，原规则只认 `iv_close` / `ad_close` / `dialog_close`。
-2. **承载容器没覆盖**：京东 / 天目 / AdGain 的透明与插屏 Activity 不在 `activityIds` 白名单。
+**第一轮**（`version 2`）修了两处：关闭按钮 `vid` 没覆盖（`jad_interstitial_close` /
+`jd_lijin_close`），以及京东 / 天目 / AdGain 的透明与插屏容器不在 `activityIds` 白名单。
+9 个 `vid` 全部用脚本核实为本包 `resources.arsc` 中 **type=id 的真实资源名**（4865 个 id
+里逐个查得）；`jad_interstitial_close_view` / `jad_back_close` 只是 layout 名而非 id，
+写进 `vid` 会永不触发，故未采用。
 
-新增的 9 个 `vid` 全部用脚本核实为本包 `resources.arsc` 中 **type=id 的真实资源名**
-（共 4865 个 id 里逐个查得）。特别注意 `jad_interstitial_close_view` / `jad_back_close`
-只是 layout 名而非 id，写进 `vid` 会永不触发，故未采用。同时给组 102 增加了首页浮层兜底，
-但保持默认禁用——首页的浮层若不消费返回键，按返回键可能退出首页。
+**第二轮**（`version 3`）复核了模板与官方 schema，又发现两个确凿缺陷：
 
-> 这一例仍是**静态推断**：截图看不到节点树。若补充规则后该广告仍未跳过，
-> 请抓 GKD 快照（`i.gkd.li/i/...`，先脱敏）并附上触发记录里的 `activityId`，
-> 按真实节点收窄选择器，不要盲目放宽点击范围。
+1. **`[clickable=true]` 是错误约束（本轮主因）**。GKD 官方 `RawRuleProps` 写明：
+   `action` 默认值 `"click"` 会**自动判断** —— 节点 clickable 用 `clickNode`，否则降级
+   `clickCenter`；`clickNode` 未被应用接收时也会回落 `clickCenter`。京东这类自定义关闭
+   View 常把点击交给父容器或 `onTouch`，`isClickable()` 返回 false，加上这个条件会把它们
+   整批筛掉。已改为 `[visibleToUser=true]`，只排除不可见节点。同时补一条
+   `[desc*="关闭"]` 兜底，覆盖没有 `vid`、只有 contentDescription 的关闭按钮。
+2. **返回键兜底被默认禁用，等于没有兜底**。组 102 原本 `enable: false`，当关闭按钮
+   读不到节点时三层规则全部落空。现改为默认启用，并用 `matchTime 8000` /
+   `actionMaximum 2` / `resetMatch: app` / `actionCd 8000` 限流（每次进入 App 最多按 2 次）。
+
+另外核实：`assets/jad_slideup.json` 是 **Lottie 动画**（`v: 5.6.10`、`nm: 向上划动`），
+只负责画手势引导，内部**没有任何 close 字段**——说明关闭按钮是 SDK 的原生 View，
+用 `vid` 匹配的方向本身没错，问题出在 `clickable` 条件。
+
+> 仍是**静态推断**：截图看不到节点树，无法确认 X 按钮的 `vid` / `desc` 及承载
+> `activityId`。若更新到 `version 3` 后该广告仍未跳过，请抓 GKD 快照
+> （`i.gkd.li/i/...`，先脱敏）并附上触发记录里的 `activityId`，按真实节点收窄选择器。
 
 ## 版本核对
 
@@ -125,7 +140,8 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 验证与回退
 
-1. 只启用本规则的组 100 / 101（组 102 保持禁用），冷启动 3 次查看 GKD 触发记录。
+1. 三个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
+   先单独关掉组 102（其余两组继续生效）。
 2. 完整走一遍「开屏 → 首页 → 开始跑步 → 结束 → 成绩上传」，确认计时、轨迹、上传正常。
 3. 无误后再导入上游订阅（记得关闭上面 3 组），重复第 1、2 步。
 4. **关闭 GKD 的无障碍开关即完全回退**，不改包、不 root、无残留。
@@ -138,7 +154,7 @@ manifest 里不存在，写成它会导致规则永不触发。
   并把顶层 `version` **+1**，否则 GKD 不会拉取更新；
 - **方式 B**：重新整段粘贴到 GKD 本地订阅（GKD 不会读取本仓库）。
 
-每次改动都请先只启用组 100 / 101，走一遍完整跑步流程再考虑开启组 102 或叠加上游订阅。
+每次改动后先走一遍完整跑步流程，确认计时 / 轨迹 / 成绩正常，再叠加上游订阅。
 
 ## 真机排障
 
@@ -146,7 +162,8 @@ manifest 里不存在，写成它会导致规则永不触发。
 |---|---|---|
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
-| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 旧版缺京东 `vid` 与透明容器；或关闭按钮 `clickable=false` | 先确认订阅已更新到 `version 2`；仍无效就抓快照，按真实节点调整，别直接删 `clickable=true` |
+| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 3`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
+| 首页被自动退出 | 组 102 的返回键没被广告浮层消费 | 在 GKD 界面单独关掉组 102，组 100 / 101 继续生效；附快照提 issue |
 | 冷启动完全没有触发记录 | 无障碍被 vivo 回收、规则未保存成功 | 查 GKD 服务状态、电池白名单、多任务锁定；重新粘贴一次 |
 | 有触发记录但广告还在 | 命中的是旧节点，或广告页不在白名单 | 看触发记录里的 `activityId`，把脱敏快照发 issue |
 | 首页正常按钮被点 | 组 101 白名单误命中业务节点 | 先关组 101，确认是否发生在 `mvi.home.HomeActivity` |
