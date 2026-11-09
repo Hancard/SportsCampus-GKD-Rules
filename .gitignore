@@ -1,7 +1,14 @@
 *.apk
+# repacked / renamed samples such as base.apk.1.apk.1_tmp are still APKs
+*.apk.*
+*.apks
+*.xapk
+*.idsig
 *.aab
 *.dex
 *.jar
+*.zip
+*.7z
 *.keystore
 *.jks
 *.pem

@@ -1,0 +1,8 @@
+# GKD parses JSON5; keep every text file in LF so a Windows edit never produces
+# a whole-file diff. core.autocrlf is set to false in this clone as well.
+* text=auto eol=lf
+*.json5 text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+.gitignore text eol=lf
+LICENSE text eol=lf
