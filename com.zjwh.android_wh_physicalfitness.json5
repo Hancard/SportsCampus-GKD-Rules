@@ -1,16 +1,19 @@
 // ============================================================================
 // 运动世界校园 7.3.93 (com.zjwh.android_wh_physicalfitness) —— GKD 本地应用规则
 //
-// 本仓库唯一交付物。导入：GKD → 订阅 → 本地订阅 → 应用规则 → + ，整段粘贴
-// 用途：补上续更订阅未用 activityIds 覆盖的 com.yfanads.* 自有 ADX 广告页。
-// 本规则只在广告 Activity 白名单内生效，不做坐标点击、不用全局规则。
-//
+// 导入：GKD → 订阅 → 本地订阅 → 应用规则 → + ，整段粘贴
+// 用途：补齐广告页的关闭按钮，以及开屏「跳过」文本兜底。
 // 前提：安装 GKD 并开启无障碍；建议同时导入续更订阅
 //       Lin-arm/GKD_subscription，并关闭其 key 13 / 14 / 15（见 README.md）。
-// 说明：若订阅已能跳掉全部广告，不必导入本文件，避免重复点击。
-// 回退：删除本地规则组，或关掉 GKD 无障碍开关。
-// 红线：本规则只在「广告 Activity 白名单」内生效，不使用坐标点击、
-//       不使用返回键、不在跑步页面匹配任何按钮。
+// 说明：若订阅已能跳掉全部广告，不必导入本文件，避免两个规则源重复点击。
+// 回退：关闭本规则组，或关掉 GKD 无障碍开关。
+//
+// 组件名与资源 ID 均对照 7.3.93 完整 AndroidManifest.xml（330 个 activity）
+// 与 resources.arsc 核实。activityIds / excludeActivityIds 是 startWith 匹配；
+// 以 "." 开头会自动补全为 appId + 该字符串。
+//
+// 红线：不接触跑步计时、轨迹、成绩与定位页面；不用坐标点击；不用跨应用
+//       全局规则；返回键兜底组默认禁用（enable: false）。
 // ============================================================================
 
 {
@@ -20,8 +23,22 @@
     {
       "key": 100,
       "name": "开屏广告-跳过按钮兜底",
-      // 官方全局开屏规则的选择器，但限定在本 App 内，不影响其它应用。
-      // 10 秒匹配窗口 + 每次启动最多点 1 次，防止在首页误点。
+      // 社区常用的开屏跳过选择器，限定在本 App 内。
+      // 10 秒匹配窗口 + 每次进入 App 最多点 1 次，防止在首页反复误点。
+      // 显式排除跑步/成绩/考试/定位等核心页面，这些页面可能出现「跳过」字样，
+      // 但绝不能被自动点击。
+      "excludeActivityIds": [
+        ".mvi.run",
+        ".mvi.sport",
+        ".mvi.indoor",
+        ".mvi.ai",
+        ".mvi.exam",
+        ".mvi.course",
+        ".mvi.home.plan",
+        ".mvi.home.SportProgressActivity",
+        ".activity.RunPlanActivity",
+        ".hybrid.ui"
+      ],
       "fastQuery": true,
       "matchTime": 10000,
       "actionMaximum": 1,
@@ -35,10 +52,13 @@
     },
     {
       "key": 101,
-      "name": "全屏/插屏广告-关闭按钮（限广告 Activity）",
-      // 下面这些组件名来自本包 AndroidManifest 静态解析，均为广告页。
-      // 不含任何激励视频 / 奖励页 —— 不影响你主动看广告领奖励。
-      // 不含 mvi.run / mvi.sport / RunPlanActivity 等跑步与成绩页面。
+      "name": "全屏/插屏广告-关闭按钮（限广告容器）",
+      // 下面组件名均来自本包 AndroidManifest 静态解析。
+      // SplashActivity / HomeActivity 是开屏与首页弹窗广告的宿主（业务页面，
+      // 不是纯广告页），其余为各广告 SDK 的容器。
+      // 不含激励视频/奖励页，不含任何跑步、成绩、定位页面。
+      // 本包 Pangle 壳是 com.byazt.cef.Stub_*（7 个），不是标准的
+      // com.bytedance.sdk.openadsdk.stub.activity.* —— 后者在本包中不存在。
       "activityIds": [
         ".mvi.splash.SplashActivity",
         ".mvi.splash.AdActivity",
@@ -52,48 +72,42 @@
         "com.qq.e.ads.PortraitADActivity",
         "com.qq.e.ads.LandscapeADActivity",
         "com.qq.e.ads.DialogActivity",
-        "com.bytedance.sdk.openadsdk.stub.activity.Stub_Standard_Portrait_Activity",
+        "com.byazt.cef.Stub_",
         "com.kwad.sdk.api.proxy.app.AdWebViewActivity"
       ],
       "actionCd": 1500,
       "rules": [
         {
-          // iv_close / ad_close / dialog_close 均已核实在本包 resources.arsc 中存在
+          // iv_close / ad_close / dialog_close 均核实在本包 resources.arsc 中存在。
+          // 与组 100 按 text 匹配「跳过」互补（按 vid 匹配关闭按钮），
+          // 两组不会命中同一节点，避免一次广告被点两次。
           "key": 0,
           "fastQuery": true,
           "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\"][clickable=true]"
-        },
+        }
+      ]
+    },
+    {
+      "key": 102,
+      "name": "视频广告-返回键兜底（默认禁用）",
+      // 仅当视频广告读不到节点、上面两组都漏时，在 GKD 界面里手动打开这一组。
+      // 使用 enable:false 而不是注释，避免在 JSON5 里手工增删逗号导致导入失败。
+      // action "back" 相当于按返回键；只因 activityIds 已限定为广告容器才安全，
+      // 请勿把 activityIds 改成不限制。
+      "enable": false,
+      "activityIds": [
+        "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
+        "com.byazt.cef.Stub_"
+      ],
+      "actionCd": 3000,
+      "actionMaximum": 2,
+      "rules": [
         {
-          "key": 1,
-          "fastQuery": true,
-          "matches": "[text*=\"跳过\"][text.length<10][visibleToUser=true]"
+          "key": 0,
+          "action": "back",
+          "matches": "[text=\"广告\"][visibleToUser=true]"
         }
       ]
     }
-
-    // ------------------------------------------------------------------------
-    // 组 102：仅当「视频广告读不到节点、上面两组都漏」时再手动启用。
-    // 启用方法：把下面整段取消注释，并在上一组末尾补一个逗号。
-    // 风险提示：action "back" 相当于按返回键；只因 activityIds 已限定为
-    //           广告 Activity 才安全，请勿把 activityIds 改成不限制。
-    //
-    // ,
-    // {
-    //   "key": 102,
-    //   "name": "视频广告-返回键兜底",
-    //   "activityIds": [
-    //     "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
-    //     "com.bytedance.sdk.openadsdk.stub.activity.Stub_Standard_Portrait_Activity"
-    //   ],
-    //   "actionCd": 3000,
-    //   "actionMaximum": 2,
-    //   "rules": [
-    //     {
-    //       "key": 0,
-    //       "action": "back",
-    //       "matches": "[text=\"广告\"][visibleToUser=true]"
-    //     }
-    //   ]
-    // }
   ]
 }
