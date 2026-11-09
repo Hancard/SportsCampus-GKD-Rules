@@ -15,7 +15,7 @@
 {
   "id": 248879535,
   "name": "运动世界校园 7.3.93 补充规则",
-  "version": 1,
+  "version": 2,
   "author": "Hancard",
   "updateUrl": "https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5",
   "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
@@ -69,24 +69,35 @@
             "com.qq.e.ads.LandscapeADActivity",
             "com.qq.e.ads.DialogActivity",
             "com.byazt.cef.Stub_",
-            "com.kwad.sdk.api.proxy.app.AdWebViewActivity"
+            "com.kwad.sdk.api.proxy.app.AdWebViewActivity",
+            "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
+            "com.jd.ad.sdk.bl.adinteraction.deeplink.JADWebViewActivity",
+            "com.tianmu.biz.activity.InterstitialActivity",
+            "com.tianmu.biz.activity.LandscapeInterstitialActivity",
+            "com.adgain.sdk.base.activity.AdActivity"
           ],
           "actionCd": 1500,
           "rules": [
             {
               "key": 0,
               "fastQuery": true,
-              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\"][clickable=true]"
+              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\"][clickable=true]"
             }
           ]
         },
         {
           "key": 102,
-          "name": "视频广告-返回键兜底（默认禁用）",
+          "name": "广告标签-返回键兜底（默认禁用）",
           "enable": false,
+          "matchTime": 10000,
           "activityIds": [
             "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
-            "com.byazt.cef.Stub_"
+            "com.byazt.cef.Stub_",
+            "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
+            "com.tianmu.biz.activity.InterstitialActivity",
+            "com.tianmu.biz.activity.LandscapeInterstitialActivity",
+            "com.adgain.sdk.base.activity.AdActivity",
+            ".mvi.home.HomeActivity"
           ],
           "actionCd": 3000,
           "actionMaximum": 2,
