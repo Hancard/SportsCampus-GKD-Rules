@@ -8,14 +8,44 @@
 
 | 文件 | 用途 |
 |---|---|
-| `com.zjwh.android_wh_physicalfitness.json5` | 规则本体，JSON5，整段复制即可 |
+| `com.zjwh.android_wh_physicalfitness.json5` | 本地「应用规则」本体，JSON5，整段复制粘贴 |
+| `subscription.json5` | 远程订阅文件，内容同上，供 GKD 通过 URL 直接导入 |
 | `README.md` / `LICENSE` / `NOTICE.md` / `.gitignore` | 仓库必要文件 |
 
+> **两个文件二选一**：要么加远程订阅，要么本地粘贴应用规则，**不要同时启用**，
+> 否则同一个广告会被两组相同规则重复点击。
+
 ## 导入
+
+### 方式 A（推荐）：远程订阅，不用复制文本
+
+```
+GKD → 订阅 → + → 粘贴 URL → 确认导入
+```
+
+```
+https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5
+```
+
+国内访问不稳时改用 jsDelivr 镜像（更新可能延迟几分钟）：
+
+```
+https://cdn.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.json5
+```
+
+导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取。
+
+### 方式 B：本地粘贴应用规则
 
 ```
 GKD → 订阅 → 本地订阅 → 应用规则 → + → 粘贴整段 JSON5 → 保存
 ```
+
+建议从 <https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/com.zjwh.android_wh_physicalfitness.json5>
+全选复制，不要用聊天窗口或历史消息里的旧文本。**粘贴前必须能看到文件最后的
+`// === END OF FILE ===` 哨兵行**；看不到就说明复制被截断，GKD 会报
+`Unclosed array` / `Unclosed object`。
 
 **只给 GKD 无障碍权限**，绝不要给运动世界校园（该 App 自带无障碍服务、设备管理器与
 针对 vivo 的权限引导页）。vivo / OriginOS 上把 GKD 加入电池白名单、允许后台高耗电、
@@ -83,14 +113,20 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 修改规则
 
-改 `com.zjwh.android_wh_physicalfitness.json5` 后需要**重新粘贴**到 GKD 本地订阅
-（GKD 不会读取本仓库，也没有自动更新）。每次改动都请先只启用组 100 / 101，
-走一遍完整跑步流程再考虑开启组 102 或叠加上游订阅。
+改 `com.zjwh.android_wh_physicalfitness.json5` 后：
+
+- **方式 A**：同步更新 `subscription.json5` 里的 `apps[0].groups`（两处内容必须一致），
+  并把顶层 `version` **+1**，否则 GKD 不会拉取更新；
+- **方式 B**：重新整段粘贴到 GKD 本地订阅（GKD 不会读取本仓库）。
+
+每次改动都请先只启用组 100 / 101，走一遍完整跑步流程再考虑开启组 102 或叠加上游订阅。
 
 ## 真机排障
 
 | 现象 | 优先检查 | 处理 |
 |---|---|---|
+| 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
+| 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
 | 冷启动完全没有触发记录 | 无障碍被 vivo 回收、规则未保存成功 | 查 GKD 服务状态、电池白名单、多任务锁定；重新粘贴一次 |
 | 有触发记录但广告还在 | 命中的是旧节点，或广告页不在白名单 | 看触发记录里的 `activityId`，把脱敏快照发 issue |
 | 首页正常按钮被点 | 组 101 白名单误命中业务节点 | 先关组 101，确认是否发生在 `mvi.home.HomeActivity` |
