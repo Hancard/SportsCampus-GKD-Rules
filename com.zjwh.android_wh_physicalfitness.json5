@@ -59,6 +59,10 @@
       // 不含激励视频/奖励页，不含任何跑步、成绩、定位页面。
       // 本包 Pangle 壳是 com.byazt.cef.Stub_*（7 个），不是标准的
       // com.bytedance.sdk.openadsdk.stub.activity.* —— 后者在本包中不存在。
+      // 末尾 5 个是京东 JAD / 天目 / AdGain 的插屏与透明容器。
+      // 2026-11-09 真机截图反馈：首页「京东 JD 60 元券 / 上滑查看详情」的
+      // 互动插屏广告（对应 assets/jad_slideup.json）由京东 SDK 承载，
+      // 其关闭按钮 vid 是 jad_interstitial_close / jd_lijin_close。
       "activityIds": [
         ".mvi.splash.SplashActivity",
         ".mvi.splash.AdActivity",
@@ -73,31 +77,47 @@
         "com.qq.e.ads.LandscapeADActivity",
         "com.qq.e.ads.DialogActivity",
         "com.byazt.cef.Stub_",
-        "com.kwad.sdk.api.proxy.app.AdWebViewActivity"
+        "com.kwad.sdk.api.proxy.app.AdWebViewActivity",
+        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
+        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADWebViewActivity",
+        "com.tianmu.biz.activity.InterstitialActivity",
+        "com.tianmu.biz.activity.LandscapeInterstitialActivity",
+        "com.adgain.sdk.base.activity.AdActivity"
       ],
       "actionCd": 1500,
       "rules": [
         {
-          // iv_close / ad_close / dialog_close 均核实在本包 resources.arsc 中存在。
+          // 所有 vid 都用 _probe/62_arsc_idtype.py 核实为本包 resources.arsc 中
+          // type=id 的真实资源名（共 4865 个 id 里逐个查得）。
+          // 注意 jad_interstitial_close_view / jad_back_close 只是 layout 名，
+          // 不是 id，写进 vid 会永不触发，故不采用。
           // 与组 100 按 text 匹配「跳过」互补（按 vid 匹配关闭按钮），
           // 两组不会命中同一节点，避免一次广告被点两次。
           "key": 0,
           "fastQuery": true,
-          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\"][clickable=true]"
+          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\"][clickable=true]"
         }
       ]
     },
     {
       "key": 102,
-      "name": "视频广告-返回键兜底（默认禁用）",
-      // 仅当视频广告读不到节点、上面两组都漏时，在 GKD 界面里手动打开这一组。
+      "name": "广告标签-返回键兜底（默认禁用）",
+      // 仅当广告读不到关闭按钮、上面两组都漏时，在 GKD 界面里手动打开这一组。
+      // 触发条件是屏幕上出现「广告」标签（京东 / 穿山甲插屏右下角都有）。
       // 使用 enable:false 而不是注释，避免在 JSON5 里手工增删逗号导致导入失败。
-      // action "back" 相当于按返回键；只因 activityIds 已限定为广告容器才安全，
-      // 请勿把 activityIds 改成不限制。
+      // ⚠️ activityIds 含 .mvi.home.HomeActivity：首页浮层广告不消费返回键时，
+      //    按返回键可能退出首页。因此本组默认禁用，只在确认有效后手动开启。
+      //    matchTime / actionMaximum 已限流，不会连续按返回键。
       "enable": false,
+      "matchTime": 10000,
       "activityIds": [
         "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
-        "com.byazt.cef.Stub_"
+        "com.byazt.cef.Stub_",
+        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
+        "com.tianmu.biz.activity.InterstitialActivity",
+        "com.tianmu.biz.activity.LandscapeInterstitialActivity",
+        "com.adgain.sdk.base.activity.AdActivity",
+        ".mvi.home.HomeActivity"
       ],
       "actionCd": 3000,
       "actionMaximum": 2,
