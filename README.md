@@ -34,7 +34,8 @@ https://cdn.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.jso
 ```
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
-后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 2`）。
+若之前已导入过本订阅，在订阅页手动刷新一次即可拿到最新规则。
 
 ### 方式 B：本地粘贴应用规则
 
@@ -82,12 +83,30 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 | key | 行为 | 约束 |
 |---|---|---|
 | 100 | 开屏「跳过」文本兜底 | `matchTime 10000`、`actionMaximum 1`、`resetMatch: app`；`excludeActivityIds` 排除跑步 / 成绩 / 考试 / 定位页 |
-| 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 14 项（startWith 匹配），`actionCd 1500`；只点 `iv_close` / `ad_close` / `dialog_close` |
-| 102 | 视频广告返回键兜底 | `enable: false` **默认禁用**；需要时在 GKD 界面里打开这一组，不要手工改 JSON5 |
+| 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 19 项（startWith 匹配），`actionCd 1500`；只点 9 个已核实的关闭按钮 `vid` |
+| 102 | 广告标签返回键兜底 | `enable: false` **默认禁用**；出现「广告」标签时按返回键；含首页浮层兜底，**可能退出首页**，确认有效再开 |
 
 组 100 与组 101 是**按文本 / 按资源 ID 互补**，不是同一条规则写两遍。激励视频 / 奖励页、
 `mvi.run` / `mvi.sport` / `RunPlanActivity` 均不在匹配范围内；无坐标点击、无跨应用全局规则，
 组 102 未启用时不会按返回键。
+
+### 京东 JAD 互动插屏（2026-11-09 真机反馈修复）
+
+用户截图里的「京东 JD / 60 元 PLUS 专享 / 上滑或点击按钮查看详情」弹窗，对应 APK 内的
+`assets/jad_slideup.json` 互动模板。原先漏拦有两个原因，都已修复：
+
+1. **关闭按钮 `vid` 没覆盖**：该广告的关闭按钮是 `jad_interstitial_close` /
+   `jd_lijin_close`，原规则只认 `iv_close` / `ad_close` / `dialog_close`。
+2. **承载容器没覆盖**：京东 / 天目 / AdGain 的透明与插屏 Activity 不在 `activityIds` 白名单。
+
+新增的 9 个 `vid` 全部用脚本核实为本包 `resources.arsc` 中 **type=id 的真实资源名**
+（共 4865 个 id 里逐个查得）。特别注意 `jad_interstitial_close_view` / `jad_back_close`
+只是 layout 名而非 id，写进 `vid` 会永不触发，故未采用。同时给组 102 增加了首页浮层兜底，
+但保持默认禁用——首页的浮层若不消费返回键，按返回键可能退出首页。
+
+> 这一例仍是**静态推断**：截图看不到节点树。若补充规则后该广告仍未跳过，
+> 请抓 GKD 快照（`i.gkd.li/i/...`，先脱敏）并附上触发记录里的 `activityId`，
+> 按真实节点收窄选择器，不要盲目放宽点击范围。
 
 ## 版本核对
 
@@ -127,6 +146,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 |---|---|---|
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
+| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 旧版缺京东 `vid` 与透明容器；或关闭按钮 `clickable=false` | 先确认订阅已更新到 `version 2`；仍无效就抓快照，按真实节点调整，别直接删 `clickable=true` |
 | 冷启动完全没有触发记录 | 无障碍被 vivo 回收、规则未保存成功 | 查 GKD 服务状态、电池白名单、多任务锁定；重新粘贴一次 |
 | 有触发记录但广告还在 | 命中的是旧节点，或广告页不在白名单 | 看触发记录里的 `activityId`，把脱敏快照发 issue |
 | 首页正常按钮被点 | 组 101 白名单误命中业务节点 | 先关组 101，确认是否发生在 `mvi.home.HomeActivity` |
