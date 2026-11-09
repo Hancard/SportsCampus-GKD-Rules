@@ -1,0 +1,104 @@
+// ============================================================================
+// GKD 远程订阅 —— 只包含运动世界校园 7.3.93 的规则
+//
+// 导入：GKD → 订阅 → + → 粘贴下面这个 URL（不要复制本文件内容）
+//   https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5
+// 国内备用（jsDelivr，更新可能晚几分钟）：
+//   https://cdn.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.json5
+//
+// 本订阅 apps[0].groups 与 com.zjwh.android_wh_physicalfitness.json5 完全一致。
+// 二选一：要么加这个远程订阅，要么本地粘贴应用规则，不要同时启用（会重复点击）。
+// 每次修改规则请把 version +1，否则 GKD 不会拉取更新。
+// 字段格式依据 https://gkd.li/guide/subscription 的最小订阅示例。
+// ============================================================================
+
+{
+  "id": 248879535,
+  "name": "运动世界校园 7.3.93 补充规则",
+  "version": 1,
+  "author": "Hancard",
+  "updateUrl": "https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5",
+  "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
+  "categories": [],
+  "globalGroups": [],
+  "apps": [
+    {
+      "id": "com.zjwh.android_wh_physicalfitness",
+      "name": "运动世界校园 7.3.93 补充",
+      "groups": [
+        {
+          "key": 100,
+          "name": "开屏广告-跳过按钮兜底",
+          "excludeActivityIds": [
+            ".mvi.run",
+            ".mvi.sport",
+            ".mvi.indoor",
+            ".mvi.ai",
+            ".mvi.exam",
+            ".mvi.course",
+            ".mvi.home.plan",
+            ".mvi.home.SportProgressActivity",
+            ".activity.RunPlanActivity",
+            ".hybrid.ui"
+          ],
+          "fastQuery": true,
+          "matchTime": 10000,
+          "actionMaximum": 1,
+          "resetMatch": "app",
+          "rules": [
+            {
+              "key": 0,
+              "matches": "[text*=\"跳过\"][text.length<10][visibleToUser=true]"
+            }
+          ]
+        },
+        {
+          "key": 101,
+          "name": "全屏/插屏广告-关闭按钮（限广告容器）",
+          "activityIds": [
+            ".mvi.splash.SplashActivity",
+            ".mvi.splash.AdActivity",
+            ".mvi.home.HomeActivity",
+            "com.yfanads.android.core.act.YFInterstitialActivity",
+            "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
+            "com.yfanads.android.adx.core.TransparentActivity",
+            "com.yfanads.android.adx.core.DialogProxyActivity",
+            "com.yfanads.android.adx.webview.AdxWebViewActivity",
+            "com.qq.e.ads.ADActivity",
+            "com.qq.e.ads.PortraitADActivity",
+            "com.qq.e.ads.LandscapeADActivity",
+            "com.qq.e.ads.DialogActivity",
+            "com.byazt.cef.Stub_",
+            "com.kwad.sdk.api.proxy.app.AdWebViewActivity"
+          ],
+          "actionCd": 1500,
+          "rules": [
+            {
+              "key": 0,
+              "fastQuery": true,
+              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\"][clickable=true]"
+            }
+          ]
+        },
+        {
+          "key": 102,
+          "name": "视频广告-返回键兜底（默认禁用）",
+          "enable": false,
+          "activityIds": [
+            "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
+            "com.byazt.cef.Stub_"
+          ],
+          "actionCd": 3000,
+          "actionMaximum": 2,
+          "rules": [
+            {
+              "key": 0,
+              "action": "back",
+              "matches": "[text=\"广告\"][visibleToUser=true]"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
