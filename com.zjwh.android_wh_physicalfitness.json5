@@ -87,29 +87,31 @@
       "actionCd": 1500,
       "rules": [
         {
-          // 所有 vid 都用 _probe/62_arsc_idtype.py 核实为本包 resources.arsc 中
-          // type=id 的真实资源名（共 4865 个 id 里逐个查得）。
-          // 注意 jad_interstitial_close_view / jad_back_close 只是 layout 名，
-          // 不是 id，写进 vid 会永不触发，故不采用。
-          // 与组 100 按 text 匹配「跳过」互补（按 vid 匹配关闭按钮），
-          // 两组不会命中同一节点，避免一次广告被点两次。
+          // 单条规则同时覆盖「按 vid 匹配」与「按 contentDescription 兜底」。
+          // 2026-11-10 修复：此前拆成 key 0 / key 1 两条 rule，一个关闭按钮若
+          // 同时有 vid 和 desc 含「关闭」，两条 rule 会各点一次 —— 连点两下，
+          // 第二次坐标可能已经落在广告素材上，反而打开落地页。合并后不可能重复触发。
           //
-          // 2026-11-09 二次修复：原先末尾的 [clickable=true] 是错误约束。
-          // GKD 官方 RawRuleProps 明确：action 默认值 "click" 会自动判断 —— 节点
-          // clickable 时用 clickNode，否则降级到 clickCenter；clickNode 未被应用
-          // 接收时也会回落 clickCenter。京东自定义关闭 View 常把点击交给父容器或
-          // onTouch，isClickable() 为 false，加这个条件会把它们整批筛掉。
-          // 改用 [visibleToUser=true]：只排除不可见节点，不限制点击实现方式。
+          // 这里刻意不写 fastQuery：官方 optimize#rule-format 规定快速查询只接受
+          // id/vid/text 系列作为 || 分支，desc*="关闭" 不符合；「只要有一个分支
+          // 不符合, 整个 || 表达式就必须停用全局快速查询」。此前 key 1 上的
+          // fastQuery:true 因此完全无效（官方：不满足格式时开不开都不影响查询
+          // 复杂度），是误导性配置。正确性优先，保留全树遍历。
+          //
+          // 所有 vid 均用 _probe/62_arsc_idtype.py 核实为本包 resources.arsc 中
+          // type=id 的真实资源名（4865 个 id 里逐个查得）；只收录广告 SDK 专属
+          // 前缀，不收 btn_close / img_close / tv_close 这类业务页面常见通用名。
+          // 注意 jad_interstitial_close_view / jad_back_close 只是 layout 名，
+          // 不是 id，写进 vid 会永不触发。
+          //
+          // 2026-11-09 二次修复：末尾的 [clickable=true] 是错误约束。官方
+          // RawRuleProps 明确 action 默认 "click" 会自动判断：clickable 用
+          // clickNode，否则降级 clickCenter；clickNode 未被接收也会回落
+          // clickCenter。京东自定义关闭 View 常把点击交给父容器或 onTouch，
+          // isClickable() 为 false，加该条件会把它们整批筛掉。现只用
+          // [visibleToUser=true] 排除不可见节点，不限制点击实现方式。
           "key": 0,
-          "fastQuery": true,
-          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\"][visibleToUser=true]"
-        },
-        {
-          // 兜底：部分广告关闭按钮没有 vid，只有 contentDescription（含「关闭」）。
-          // 仍受本组 activityIds 白名单与 actionCd 限流约束，不会落到业务页面。
-          "key": 1,
-          "fastQuery": true,
-          "matches": "[desc*=\"关闭\"][visibleToUser=true]"
+          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\" || desc*=\"关闭\"][visibleToUser=true]"
         }
       ]
     },
@@ -120,11 +122,19 @@
       // 用于上面两组都读不到关闭按钮节点时的最后兜底。
       // 2026-11-09 二次修复：改为默认启用。此前 enable:false 让京东礼金互动
       // 插屏在关闭按钮读不到节点时完全没有兜底，真机反馈仍有广告。
+      //
+      // 2026-11-10 修复参数矛盾：此前 actionCd 8000 与 matchTime 8000 相等。
+      // 官方 RawCommonProps 定义：matchTime 是「规则参与查询屏幕节点时，等待
+      // 一段时间后休眠此规则」，actionCd 是「执行 action 最小间隔」。两者都取
+      // 8000 且 resetMatch=app（只有重新进入 App 才唤醒），意味着第一次返回键
+      // 之后规则已进入 8 秒冷却，而 8 秒窗口同时耗尽 → 第二次永远不可能执行，
+      // actionMaximum:2 是死配置，注释/README 声称「最多按 2 次」与实现不符。
+      // 现把 actionCd 降到 2500，让 2 次返回键在 8 秒窗口内真正可达；若第一次
+      // 已关掉广告，节点消失，第二次自然不会触发。
       // ⚠️ activityIds 含 .mvi.home.HomeActivity：首页浮层若不消费返回键，
       //    按返回键可能退出首页（只影响当前页面，不影响计时/轨迹/成绩）。
-      //    用 matchTime 8000 + actionMaximum 2 + resetMatch app + actionCd 8000
-      //    限流：每次进入 App 最多按 2 次。若实测发现误退出，在 GKD 界面里
-      //    直接关掉本组即可，无需改文件。
+      //    仍有 matchTime 8000 + actionMaximum 2 + resetMatch app 限流。
+      //    若实测发现误退出，在 GKD 界面里直接关掉本组即可，无需改文件。
       "matchTime": 8000,
       "resetMatch": "app",
       "activityIds": [
@@ -136,7 +146,7 @@
         "com.adgain.sdk.base.activity.AdActivity",
         ".mvi.home.HomeActivity"
       ],
-      "actionCd": 8000,
+      "actionCd": 2500,
       "actionMaximum": 2,
       "rules": [
         {

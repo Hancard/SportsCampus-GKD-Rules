@@ -17,7 +17,7 @@
 {
   "id": 248879535,
   "name": "运动世界校园 7.3.93 补充规则",
-  "version": 3,
+  "version": 4,
   "author": "Hancard",
   "updateUrl": "https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5",
   "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
@@ -82,13 +82,7 @@
           "rules": [
             {
               "key": 0,
-              "fastQuery": true,
-              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\"][visibleToUser=true]"
-            },
-            {
-              "key": 1,
-              "fastQuery": true,
-              "matches": "[desc*=\"关闭\"][visibleToUser=true]"
+              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"jad_interstitial_close\" || vid=\"jd_lijin_close\" || vid=\"jd_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"ksad_interstitial_close_outer\" || vid=\"tianmu_suspend_iv_close\" || desc*=\"关闭\"][visibleToUser=true]"
             }
           ]
         },
@@ -106,7 +100,7 @@
             "com.adgain.sdk.base.activity.AdActivity",
             ".mvi.home.HomeActivity"
           ],
-          "actionCd": 8000,
+          "actionCd": 2500,
           "actionMaximum": 2,
           "rules": [
             {
