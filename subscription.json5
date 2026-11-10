@@ -8,6 +8,10 @@
 // ⚠️ 不要用 cdn.jsdelivr.net 节点：它对 @main 有长缓存，实测长期停在
 //    version 1（加 ?v= 查询参数也无效），会拿到带 [clickable=true] 的旧规则。
 //
+// 本订阅刻意不写 updateUrl：官方 RawSubscription 规定该字段缺失时，GKD 会
+// 「使用添加订阅时填写的链接」检查更新。这样用 fastly 导入就一直走 fastly，
+// 不会像旧版那样在自动更新时回落到国内不通的 raw 链接。
+//
 // 本订阅 apps[0].groups 与 com.zjwh.android_wh_physicalfitness.json5 完全一致。
 // 二选一：要么加这个远程订阅，要么本地粘贴应用规则，不要同时启用（会重复点击）。
 // 每次修改规则请把 version +1，否则 GKD 不会拉取更新。
@@ -17,9 +21,8 @@
 {
   "id": 248879535,
   "name": "运动世界校园 7.3.93 补充规则",
-  "version": 5,
+  "version": 6,
   "author": "Hancard",
-  "updateUrl": "https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5",
   "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
   "categories": [],
   "globalGroups": [],
@@ -41,7 +44,38 @@
             ".mvi.home.plan",
             ".mvi.home.SportProgressActivity",
             ".activity.RunPlanActivity",
-            ".hybrid.ui"
+            ".hybrid.ui",
+            ".mvi.tice",
+            ".mvi.teachplan",
+            ".mvi.roll",
+            ".mvi.extra",
+            ".mvi.appeal",
+            ".mvi.survey",
+            ".mvi.competition",
+            ".mvi.notice",
+            ".mvi.dynamic",
+            ".mvi.me",
+            ".mvi.setting",
+            ".mvi.choose",
+            ".mvi.register",
+            ".mvi.login",
+            ".mvi.tourist",
+            ".mvi.wearable",
+            ".activity.mine",
+            ".mvi.home.InterestLabelActivity",
+            ".mvi.home.RankingListActivity",
+            ".mvi.home.rank",
+            ".mvi.CustomWebViewActivity",
+            ".mvi.WebViewActivity",
+            ".mvi.WebViewGameActivity",
+            ".mvi.VideoPlayActivity",
+            ".mvi.FileReaderActivity",
+            ".mvi.ImageViewerActivity",
+            ".mvi.MultiImageSelectorActivity",
+            ".hybrid.demo",
+            ".utils.qrcode",
+            ".wxapi",
+            ".mvi.splash.SystemUpgradeActivity"
           ],
           "fastQuery": true,
           "matchTime": 10000,

@@ -25,9 +25,20 @@
       "name": "开屏广告-跳过按钮兜底",
       // 社区常用的开屏跳过选择器，限定在本 App 内。
       // 10 秒匹配窗口 + 每次进入 App 最多点 1 次，防止在首页反复误点。
-      // 显式排除跑步/成绩/考试/定位等核心页面，这些页面可能出现「跳过」字样，
-      // 但绝不能被自动点击。
+      // 本组没有 activityIds 白名单（否则会漏掉开屏宿主），所以用
+      // excludeActivityIds 黑名单挡住所有业务页面 —— 这些页面可能出现「跳过」
+      // 字样，但绝不能被自动点击。
+      //
+      // 2026-11-10 第三轮红线加固：原来只有 10 个前缀，只盖住本包 140 个
+      // 自有 Activity 中的 36 个。按完整 manifest 逐路径反查后补到 41 个，
+      // 覆盖 136/140；剩下没排除的 4 个恰好是必须保留的广告链路：
+      //   .mvi.splash.SplashActivity / .mvi.splash.AdActivity（开屏）
+      //   .mvi.home.HomeActivity（首页弹窗）
+      //   .kwad.KwadHandlerActivity（快手广告桥接，刻意不排除以免漏跳过）
+      // 每个前缀都用脚本确认在 manifest 中至少命中一个真实 Activity（startWith）。
+      // 刻意排除的还有 .mvi.splash.SystemUpgradeActivity（版本升级弹窗，非广告）。
       "excludeActivityIds": [
+        // --- 核心红线：跑步 / 成绩 / 考试 / 定位 / 课程 ---
         ".mvi.run",
         ".mvi.sport",
         ".mvi.indoor",
@@ -37,7 +48,42 @@
         ".mvi.home.plan",
         ".mvi.home.SportProgressActivity",
         ".activity.RunPlanActivity",
-        ".hybrid.ui"
+        ".hybrid.ui",
+        // --- 体测 / 教学 / 考勤 / 加分 / 申诉 / 问卷 / 竞赛 ---
+        ".mvi.tice",
+        ".mvi.teachplan",
+        ".mvi.roll",
+        ".mvi.extra",
+        ".mvi.appeal",
+        ".mvi.survey",
+        ".mvi.competition",
+        ".mvi.notice",
+        ".mvi.dynamic",
+        // --- 个人中心 / 设置 / 选课 / 登录注册 / 其他业务页 ---
+        ".mvi.me",
+        ".mvi.setting",
+        ".mvi.choose",
+        ".mvi.register",
+        ".mvi.login",
+        ".mvi.tourist",
+        ".mvi.wearable",
+        ".activity.mine",
+        ".mvi.home.InterestLabelActivity",
+        ".mvi.home.RankingListActivity",
+        ".mvi.home.rank",
+        // --- 内容查看器 / H5 / 分享支付 ---
+        ".mvi.CustomWebViewActivity",
+        ".mvi.WebViewActivity",
+        ".mvi.WebViewGameActivity",
+        ".mvi.VideoPlayActivity",
+        ".mvi.FileReaderActivity",
+        ".mvi.ImageViewerActivity",
+        ".mvi.MultiImageSelectorActivity",
+        ".hybrid.demo",
+        ".utils.qrcode",
+        ".wxapi",
+        // --- 系统升级弹窗（非广告，不应自动点「跳过」）---
+        ".mvi.splash.SystemUpgradeActivity"
       ],
       "fastQuery": true,
       "matchTime": 10000,
