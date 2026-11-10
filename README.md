@@ -112,9 +112,10 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 
 **第一轮**（`version 2`）修了两处：关闭按钮 `vid` 没覆盖（`jad_interstitial_close` /
 `jd_lijin_close`），以及京东 / 天目 / AdGain 的透明与插屏容器不在 `activityIds` 白名单。
-9 个 `vid` 全部用脚本核实为本包 `resources.arsc` 中 **type=id 的真实资源名**（4865 个 id
-里逐个查得）；`jad_interstitial_close_view` / `jad_back_close` 只是 layout 名而非 id，
-写进 `vid` 会永不触发，故未采用。
+**当时的** 9 个 `vid` 全部用脚本核实为本包 `resources.arsc` 中 **type=id 的真实资源名**
+（4865 个 id 里逐个查得）；`jad_interstitial_close_view` / `jad_back_close` 只是 layout
+名而非 id，写进 `vid` 会永不触发，故未采用。9 个的规模本身在第三轮之二被证明远远不够，
+现为 34 个。
 
 **第二轮**（`version 3`）复核了模板与官方 schema，又发现两个确凿缺陷：
 
