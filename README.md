@@ -37,10 +37,10 @@ https://fastly.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.
 > 2026-11-09 实测仍返回 **`version 1`**（加 `?v=3` 查询参数也无法绕过），会拿到带
 > `[clickable=true]`、组 102 默认禁用的最旧规则，表现就是「仓库明明更新了、广告照旧」。
 > `fastly.jsdelivr.net`、`github.com/.../raw/main/` 与固定 commit SHA 的 CDN 链接均实测返回当前版本。
-> **导入后请在 GKD 订阅页核对版本号是否为 `version: 4`**；不是就换 raw / fastly 链接重新导入。
+> **导入后请在 GKD 订阅页核对版本号是否为 `version: 5`**；不是就换 raw / fastly 链接重新导入。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
-后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 4`）。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 5`）。
 若之前已导入过本订阅，在订阅页手动刷新一次即可拿到最新规则。
 
 ### 方式 B：本地粘贴应用规则
@@ -89,7 +89,7 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 | key | 行为 | 约束 |
 |---|---|---|
 | 100 | 开屏「跳过」文本兜底 | `matchTime 10000`、`actionMaximum 1`、`resetMatch: app`；`excludeActivityIds` 排除跑步 / 成绩 / 考试 / 定位页 |
-| 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 19 项（startWith 匹配），`actionCd 1500`；**单条 rule** 用 `\|\|` 连接已核实的 `vid` 与 `desc*="关闭"`，避免同一按钮被点两次 |
+| 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 24 项（startWith 匹配），`actionCd 1500`；**单条 rule** 用 `\|\|` 连接已核实的 `vid` 与 `desc*="关闭"`，避免同一按钮被点两次 |
 | 102 | 广告标签返回键兜底 | **默认启用**；出现「广告」标签且前两组读不到节点时按返回键；`matchTime 8000`、`actionMaximum 2`、`resetMatch: app`、`actionCd 2500` 限流 |
 
 组 100 与组 101 是**按文本 / 按资源 ID 与 contentDescription 互补**，不是同一条规则写两遍。激励视频 / 奖励页、
@@ -127,10 +127,10 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 用 `vid` 匹配的方向本身没错，问题出在 `clickable` 条件。
 
 > 仍是**静态推断**：截图看不到节点树，无法确认 X 按钮的 `vid` / `desc` 及承载
-> `activityId`。若更新到 `version 4` 后该广告仍未跳过，请抓 GKD 快照
+> `activityId`。若更新到 `version 5` 后该广告仍未跳过，请抓 GKD 快照
 > （`i.gkd.li/i/...`，先脱敏）并附上触发记录里的 `activityId`，按真实节点收窄选择器。
 
-### 第三轮：官方 API 语义复核与参数自相矛盾（2026-11-10，`version 4`）
+### 第三轮之一：官方 API 语义复核与参数自相矛盾（2026-11-10，`version 4`）
 
 逐条对照 [GKD 官方 API](https://gkd.li/api/interfaces/RawCommonProps) 与
 [查询优化](https://gkd.li/guide/optimize) 后，修掉三个脚本此前查不出的缺陷：
@@ -153,6 +153,35 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 `excludeActivityIds` 写在**组级**是合法的；`desc`、`visibleToUser`、`text.length`
 都是官方 [节点属性](https://gkd.li/guide/node) 中的真实字段，选择器语法无误。
 
+### 第三轮之二：反查发现真正的漏拦主因（2026-11-10，`version 5`）
+
+把 `resources.arsc` 的 **4865 个 `type=id` 资源名**和 manifest 的 **330 个
+activity** 全量反查一遍后，发现之前的规则有两个覆盖型缺陷——这才是「规则看着对、
+广告照样弹」的主要原因，前面几轮只修了语法和参数：
+
+1. **关闭按钮 `vid` 只写了 9 个，但本包实际打包了 7 套广告 SDK**。反查到 207 个
+   含 `close` / `skip` / `dismiss` 的资源名，其中大量是各 SDK 的**主**关闭按钮：
+   天目 `tianmu_iv_close` / `tianmu_tv_close`、快手 `ksad_close_btn` /
+   `ksad_interstitial_auto_close`、京东 `jad_banner_close` / `jad_feed_close`、
+   AdGain `adgain_interstitial_close_text`、MIMO `mimo_interstitial_close_img`、
+   HiAd `hiad_banner_close_button` 等。原白名单里只有 `tianmu_suspend_iv_close`
+   （悬浮广告专用）和 `ksad_interstitial_close_outer`，主插屏的关闭按钮全部落空。
+   现补齐到 **34 个 `vid`**，逐个用脚本核对为真实 `type=id` 资源名。
+2. **广告容器白名单漏了整条链路**。manifest 里明确存在百度
+   `com.baidu.mobads.sdk.api.AppActivity` / `BdShellActivity`、穿山甲
+   `com.bytedance.msdk.api.activity.TTTransparentActivity` /
+   `TTDelegateActivity`、快手 `KsFullScreenVideoActivity`，这些都不在原 19 项里。
+   组 101 白名单补到 **24 项**，组 102 补 3 个纯广告容器。
+
+补的时候刻意守三条边界：只收广告 SDK 专属前缀（不收 `btn_close` / `img_close` /
+`tv_close` 这类业务首页常见通用名，否则 `.mvi.home.HomeActivity` 在白名单内会误点
+首页控件）；不收任何 `*_reward_*` 激励视频资源（用户可能想领奖励）；不把广告落地页
+WebView 或任何 `mvi/run`、`mvi/sport` 业务页面放进白名单。所有新增容器名都对照
+完整 manifest 逐项核实存在，红线检查（不含 `reward`、不含跑步/成绩页）仍然通过。
+
+> 注意 `desc*="关闭"` 兜底仍然保留：没有 `vid` 的自定义关闭 View 靠它兜住。
+> 但它是全树遍历、无快速查询优化；若真机发现首页正常按钮被点，先关组 101 排查。
+
 ## 版本核对
 
 规则中的 `activityIds` 与 `vid` 已逐项对照 7.3.93 的完整 `AndroidManifest.xml`
@@ -170,7 +199,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 验证与回退
 
-1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 4`；本地粘贴的确认末尾有
+1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 5`；本地粘贴的确认末尾有
    `// === END OF FILE ===` 且组 101 的单条规则里同时含 `vid=` 与 `desc*="关闭"`。
    版本不对，后面测了也白测。
 2. 三个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
@@ -196,9 +225,9 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
 | 仓库已更新但广告照旧、规则内容没变 | 用 `cdn.jsdelivr.net` 导入，订阅被缓存停在 `version 1` | 在 GKD 订阅页核对版本号；改用 raw 或 fastly 链接重新导入，`?v=` 参数不能绕过缓存 |
-| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 4`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
-| 关闭按钮被连点两下、反而打开了广告落地页 | 旧版组 101 把 `vid` 与 `desc*="关闭"` 拆成两条 rule，同一按钮被命中两次 | 确认已升到 `version 4`；两条已合并为单条 rule。仍复现就关掉上游订阅排查双规则源 |
-| 返回键兜底只按了一次就没动静 | 旧版 `actionCd` 与 `matchTime` 同为 8000，第二次永远排不进窗口 | 确认已升到 `version 4`，`actionCd` 应为 2500 |
+| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 5`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
+| 关闭按钮被连点两下、反而打开了广告落地页 | 旧版组 101 把 `vid` 与 `desc*="关闭"` 拆成两条 rule，同一按钮被命中两次 | 确认已升到 `version 4` 或更新；两条已合并为单条 rule。仍复现就关掉上游订阅排查双规则源 |
+| 返回键兜底只按了一次就没动静 | 旧版 `actionCd` 与 `matchTime` 同为 8000，第二次永远排不进窗口 | 确认已升到 `version 4` 或更新，`actionCd` 应为 2500 |
 | 首页被自动退出 | 组 102 的返回键没被广告浮层消费 | 在 GKD 界面单独关掉组 102，组 100 / 101 继续生效；附快照提 issue |
 | 冷启动完全没有触发记录 | 无障碍被 vivo 回收、规则未保存成功 | 查 GKD 服务状态、电池白名单、多任务锁定；重新粘贴一次 |
 | 有触发记录但广告还在 | 命中的是旧节点，或广告页不在白名单 | 看触发记录里的 `activityId`，把脱敏快照发 issue |
