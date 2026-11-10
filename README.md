@@ -44,10 +44,10 @@ https://fastly.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.
 > 2026-11-09 实测仍返回 **`version 1`**（加 `?v=3` 查询参数也无法绕过），会拿到带
 > `[clickable=true]`、组 102 默认禁用的最旧规则，表现就是「仓库明明更新了、广告照旧」。
 > `fastly.jsdelivr.net`、`github.com/.../raw/main/` 与固定 commit SHA 的 CDN 链接均实测返回当前版本。
-> **导入后请在 GKD 订阅页核对版本号是否为 `version: 6`**；不是就换 raw / fastly 链接重新导入。
+> **导入后请在 GKD 订阅页核对版本号是否为 `version: 7`**；不是就换 raw / fastly 链接重新导入。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
-后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 6`）。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 7`）。
 若之前已导入过本订阅，在订阅页手动刷新一次即可拿到最新规则。
 
 ### 方式 B：本地粘贴应用规则
@@ -95,14 +95,16 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 
 | key | 行为 | 约束 |
 |---|---|---|
-| 100 | 开屏「跳过」文本兜底 | `matchTime 10000`、`actionMaximum 1`、`resetMatch: app`；`excludeActivityIds` 41 项覆盖本包 136/140 个业务 Activity，只留 4 个广告宿主 |
+| 100 | 开屏 / 首页弹窗「跳过」文本兜底 | `matchTime 20000`、`actionMaximum 2`、`resetMatch: activity`、`actionCd 1500`；`excludeActivityIds` 41 项覆盖本包 136/140 个业务 Activity，只留 4 个广告宿主 |
 | 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 24 项（startWith 匹配），`actionCd 1500`；**单条 rule** 用 `\|\|` 连接已核实的 `vid` 与 `desc*="关闭"`，避免同一按钮被点两次 |
-| 102 | 广告标签返回键兜底 | **默认启用**；出现「广告」标签且前两组读不到节点时按返回键；`matchTime 8000`、`actionMaximum 2`、`resetMatch: app`、`actionCd 2500` 限流 |
+| 102 | 广告标签 / 京东互动引导语返回键兜底 | **默认启用**；前两组读不到节点时按返回键；白名单 24 项（与组 101 对齐），`excludeActivityIds` 单独排除启动入口 `SplashActivity`；`matchTime 20000`、`actionMaximum 3`、`resetMatch: activity`、`actionCd 2500` 限流 |
 
 组 100 与组 101 是**按文本 / 按资源 ID 与 contentDescription 互补**，不是同一条规则写两遍。激励视频 / 奖励页、
 `mvi.run` / `mvi.sport` / `RunPlanActivity` 均不在匹配范围内；无硬编码屏幕坐标、无跨应用全局规则。
-组 102 只在广告容器白名单内按返回键，**不会作用于跑步页**；若实测发现首页被误退出，
-在 GKD 界面里单独关掉组 102 即可。
+组 102 只在广告容器白名单内按返回键，**不会作用于跑步页**；`excludeActivityIds` 单独排除
+`SplashActivity`，因为在启动入口按返回键会直接退出 App。返回键即使命中广告素材文案
+（「立即领取」等）也不会打开落地页，这是它比点击兜底更安全的地方。若实测发现首页被
+误退出，在 GKD 界面里单独关掉组 102 即可。
 
 ### 京东 JAD 互动插屏（2026-11-09 两轮真机截图反馈修复）
 
@@ -135,7 +137,7 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 用 `vid` 匹配的方向本身没错，问题出在 `clickable` 条件。
 
 > 仍是**静态推断**：截图看不到节点树，无法确认 X 按钮的 `vid` / `desc` 及承载
-> `activityId`。若更新到 `version 6` 后该广告仍未跳过，请抓 GKD 快照
+> `activityId`。若更新到 `version 7` 后该广告仍未跳过，请抓 GKD 快照
 > （`i.gkd.li/i/...`，先脱敏）并附上触发记录里的 `activityId`，按真实节点收窄选择器。
 
 ### 第三轮之一：官方 API 语义复核与参数自相矛盾（2026-11-10，`version 4`）
@@ -205,6 +207,49 @@ WebView 或任何 `mvi/run`、`mvi/sport` 业务页面放进白名单。所有�
 2. **订阅里硬编码的 `updateUrl` 会让备用链接导入失效**，详见上方「方式 A」的说明。
    已移除该字段，改为沿用导入时填写的链接。
 
+### 第四轮：为什么「开屏能拦、几秒后的弹窗拦不住」（2026-11-10，`version 7`）
+
+真机反馈：开屏广告与固定式 banner 都能正常跳过，唯独**进入 App 几秒后弹出、必须
+手动关掉才能继续使用**的模态弹窗（大多是京东）拦不住。这轮没有再补 `vid` —— 前两类
+广告能拦已经证明按 `vid` 点击是通的，问题出在**时序与容器白名单**。
+
+静态侧先确认「开屏」与「首页弹窗」确实是两个独立广告位：dex 里 `indexScreen` /
+`index_screen`、`returnIndexScreen` / `return_index_screen`、`expiredOpenScreen` /
+`expired_open_screen`、`runScreen`、`minePageAd` 各自独立，与早期从 `XYZAdConfigBean`
+读到的服务端配置字段一致。首页弹窗挂在 `.mvi.home.HomeActivity`，开屏在
+`.mvi.splash.SplashActivity`。
+
+1. **组 100 开屏点过一次就整次会话休眠（主因）**。官方
+   [RawCommonProps](https://gkd.li/api/interfaces/rawcommonprops) 原文：
+   `actionMaximum` 是「规则的 action 被执行的最大次数，达到最大次数时，休眠此规则」；
+   `resetMatch: 'app'` 是「重新进入 app 时，重置规则」。原配置 `actionMaximum: 1` +
+   `resetMatch: "app"`，开屏「跳过」点完即休眠，而首页弹窗是同一次进入 App 里几秒后
+   才出现的第二个广告位 —— 它的「跳过」按钮永远等不到规则醒来。改为官方默认的
+   `resetMatch: "activity"`（Activity 刷新时重置）、`actionMaximum: 2`、
+   `matchTime: 20000`，补 `actionCd: 1500` 防同一广告内连点。
+2. **组 102 的返回键兜底窗口已经过期**。`matchTime: 8000` 从进入 App 起算，
+   `resetMatch: "app"` 同会话不重置；弹窗几秒后才弹、关闭按钮还可能再延迟，
+   8 秒窗口耗尽后规则休眠。改 `matchTime: 20000`、`resetMatch: "activity"`、
+   `actionMaximum: 3`（`actionCd 2500` 保持，仍满足 `actionCd < matchTime`）。
+3. **组 102 白名单缺的 14 项恰好都是弹窗类容器**。组 101 有 24 项，组 102 只有
+   10 项；缺的包括 `DialogProxyActivity`、`TransparentActivity`、
+   `com.qq.e.ads.DialogActivity`、`AdActivity`、`JADWebViewActivity` 等 —— 正是
+   「几秒后弹出的模态弹窗」的宿主。关闭按钮读不到节点时，兜底在这些页面上根本不
+   参与匹配。现与组 101 对齐补齐到 24 项，并单独用 `excludeActivityIds` 排除
+   `SplashActivity`（启动入口按返回键会退出 App）。
+4. **触发条件是精确匹配，把京东弹窗文案全漏了**。原来是
+   `[text="广告" || desc="广告"]`，而京东互动插屏的屏幕文案是「摇一摇查看广告」
+   「上滑查看更多内容」「滑动查看详情」「立即领取」（dex 中「广告」x533、
+   「摇一摇」x7、「上滑」x7、「查看详情」x11，均为实证），精确匹配全部漏掉。
+   改为包含匹配并补入这些引导语。因为本组 action 是 `back` 而非 `click`，命中
+   素材文案不会点开广告落地页 —— 这是刻意选返回键做兜底的原因。
+
+> 边界：`indexScreen` 等字段只说明广告位存在，**不能证明弹窗的真实 `activityId`
+> 与关闭按钮的节点属性**。`assets/jad_slideup.json` 是 Lottie 动画，内部没有任何
+> close 字段，关闭按钮是 SDK 原生 View；它究竟带 `vid`、`text` 还是什么都没有，
+> 只有真机快照能确定。若升到 `version 7` 后仍漏，请按下方「真机排障 → 抓快照」
+> 提供 `activityId` 与节点树，据此收窄选择器。
+
 ## 版本核对
 
 规则中的 `activityIds` 与 `vid` 已逐项对照 7.3.93 的完整 `AndroidManifest.xml`
@@ -222,7 +267,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 验证与回退
 
-1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 6`；本地粘贴的确认末尾有
+1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 7`；本地粘贴的确认末尾有
    `// === END OF FILE ===` 且组 101 的单条规则里同时含 `vid=` 与 `desc*="关闭"`。
    版本不对，后面测了也白测。
 2. 三个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
@@ -248,7 +293,8 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
 | 仓库已更新但广告照旧、规则内容没变 | 用 `cdn.jsdelivr.net` 导入，订阅被缓存停在 `version 1` | 在 GKD 订阅页核对版本号；改用 raw 或 fastly 链接重新导入，`?v=` 参数不能绕过缓存 |
-| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 6`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
+| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 7`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
+| **开屏 / 固定式能拦，进入 App 几秒后的弹窗拦不住** | `version 6` 及更早：组 100 开屏点过一次后整次会话休眠、组 102 的 8 秒窗口已耗尽且白名单缺 Dialog 类容器 | 升到 `version 7`；核对订阅页版本号，仍漏就抓快照确认弹窗的 `activityId` 与关闭节点 |
 | 关闭按钮被连点两下、反而打开了广告落地页 | 旧版组 101 把 `vid` 与 `desc*="关闭"` 拆成两条 rule，同一按钮被命中两次 | 确认已升到 `version 4` 或更新；两条已合并为单条 rule。仍复现就关掉上游订阅排查双规则源 |
 | 返回键兜底只按了一次就没动静 | 旧版 `actionCd` 与 `matchTime` 同为 8000，第二次永远排不进窗口 | 确认已升到 `version 4` 或更新，`actionCd` 应为 2500 |
 | 首页被自动退出 | 组 102 的返回键没被广告浮层消费 | 在 GKD 界面单独关掉组 102，组 100 / 101 继续生效；附快照提 issue |

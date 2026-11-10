@@ -21,7 +21,7 @@
 {
   "id": 248879535,
   "name": "运动世界校园 7.3.93 补充规则",
-  "version": 6,
+  "version": 7,
   "author": "Hancard",
   "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
   "categories": [],
@@ -78,9 +78,10 @@
             ".mvi.splash.SystemUpgradeActivity"
           ],
           "fastQuery": true,
-          "matchTime": 10000,
-          "actionMaximum": 1,
-          "resetMatch": "app",
+          "matchTime": 20000,
+          "actionMaximum": 2,
+          "resetMatch": "activity",
+          "actionCd": 1500,
           "rules": [
             {
               "key": 0,
@@ -128,27 +129,44 @@
         {
           "key": 102,
           "name": "广告标签-返回键兜底",
-          "matchTime": 8000,
-          "resetMatch": "app",
+          "matchTime": 20000,
+          "resetMatch": "activity",
+          "excludeActivityIds": [
+            ".mvi.splash.SplashActivity"
+          ],
           "activityIds": [
+            ".mvi.splash.SplashActivity",
+            ".mvi.splash.AdActivity",
+            ".mvi.home.HomeActivity",
+            "com.yfanads.android.core.act.YFInterstitialActivity",
             "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
+            "com.yfanads.android.adx.core.TransparentActivity",
+            "com.yfanads.android.adx.core.DialogProxyActivity",
+            "com.yfanads.android.adx.webview.AdxWebViewActivity",
+            "com.qq.e.ads.ADActivity",
+            "com.qq.e.ads.PortraitADActivity",
+            "com.qq.e.ads.LandscapeADActivity",
+            "com.qq.e.ads.DialogActivity",
             "com.byazt.cef.Stub_",
+            "com.kwad.sdk.api.proxy.app.AdWebViewActivity",
             "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
+            "com.jd.ad.sdk.bl.adinteraction.deeplink.JADWebViewActivity",
             "com.tianmu.biz.activity.InterstitialActivity",
             "com.tianmu.biz.activity.LandscapeInterstitialActivity",
             "com.adgain.sdk.base.activity.AdActivity",
             "com.baidu.mobads.sdk.api.AppActivity",
+            "com.baidu.mobads.sdk.api.BdShellActivity",
             "com.bytedance.msdk.api.activity.TTTransparentActivity",
-            "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity",
-            ".mvi.home.HomeActivity"
+            "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
+            "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity"
           ],
           "actionCd": 2500,
-          "actionMaximum": 2,
+          "actionMaximum": 3,
           "rules": [
             {
               "key": 0,
               "action": "back",
-              "matches": "[text=\"广告\" || desc=\"广告\"][visibleToUser=true]"
+              "matches": "[text*=\"广告\" || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\" || text*=\"滑动查看详情\" || text*=\"立即领取\"][visibleToUser=true]"
             }
           ]
         }

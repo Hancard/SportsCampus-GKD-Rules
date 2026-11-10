@@ -24,7 +24,8 @@
       "key": 100,
       "name": "开屏广告-跳过按钮兜底",
       // 社区常用的开屏跳过选择器，限定在本 App 内。
-      // 10 秒匹配窗口 + 每次进入 App 最多点 1 次，防止在首页反复误点。
+      // 20 秒匹配窗口 + 每次 Activity 刷新最多点 2 次（开屏 1 次 + 首页弹窗
+      // 1 次），防止在首页反复误点；详见下方 matchTime 处的第四轮时序说明。
       // 本组没有 activityIds 白名单（否则会漏掉开屏宿主），所以用
       // excludeActivityIds 黑名单挡住所有业务页面 —— 这些页面可能出现「跳过」
       // 字样，但绝不能被自动点击。
@@ -86,9 +87,19 @@
         ".mvi.splash.SystemUpgradeActivity"
       ],
       "fastQuery": true,
-      "matchTime": 10000,
-      "actionMaximum": 1,
-      "resetMatch": "app",
+      // 2026-11-10 第四轮（真机反馈：开屏 / 固定式能拦，几秒后弹窗拦不住）：
+      // 官方 RawCommonProps 明确「actionMaximum 达到最大次数时休眠此规则」，
+      // 而 resetMatch:"app" 只在「重新进入 app」时重置。开屏点过一次「跳过」
+      // 后，同一次会话里本组一直休眠；但服务端把开屏与首页弹窗配成两个独立
+      // 广告位 —— dex 中 indexScreen / index_screen、returnIndexScreen、
+      // expiredOpenScreen 各自独立，后者在开屏之后几秒才弹出，正好落在休眠期。
+      // 改为官方默认的 resetMatch:"activity"：SplashActivity → HomeActivity
+      // 切换时重置；matchTime 放宽到 20 秒覆盖延迟弹窗；actionMaximum 2 允许
+      // 开屏与弹窗各点一次；actionCd 1500 防止同一广告内连点。
+      "matchTime": 20000,
+      "actionMaximum": 2,
+      "resetMatch": "activity",
+      "actionCd": 1500,
       "rules": [
         {
           "key": 0,
@@ -213,28 +224,64 @@
       //    按返回键可能退出首页（只影响当前页面，不影响计时/轨迹/成绩）。
       //    仍有 matchTime 8000 + actionMaximum 2 + resetMatch app 限流。
       //    若实测发现误退出，在 GKD 界面里直接关掉本组即可，无需改文件。
-      "matchTime": 8000,
-      "resetMatch": "app",
+      //
+      // 2026-11-10 第四轮：真机反馈「开屏 / 固定式能拦，几秒后弹窗拦不住」。
+      // ① 原 matchTime 8000 + resetMatch:"app"：窗口从进入 App 起算且同会话
+      //    不重置，而首页弹窗是几秒后才出现、关闭按钮还可能再延迟几秒，
+      //    8 秒窗口早已耗尽并休眠 → 返回键兜底形同虚设。改 20 秒并在
+      //    activity 刷新时重置。
+      // ② 原白名单只有 10 项，缺的 14 项恰好大多是 Dialog / Transparent /
+      //    插屏容器（DialogProxyActivity、TransparentActivity、DialogActivity、
+      //    AdActivity、JADWebViewActivity…）—— 正是「弹窗」类广告的宿主。
+      //    关闭按钮读不到节点时，本组在这些容器上根本不生效。现与组 101
+      //    对齐补齐到 24 项。
+      // ③ 触发条件原为精确 [text="广告"]，但京东互动弹窗的屏幕文案是
+      //    「摇一摇查看广告」「上滑查看更多内容」这类含子串文本，精确匹配
+      //    全部漏掉。改用包含匹配并补入京东互动引导语；本组 action 是 back
+      //    而不是 click，命中广告素材文案不会点开落地页。
+      // ④ 唯一显式排除 SplashActivity：它是启动入口，按返回键会直接退出 App。
+      "matchTime": 20000,
+      "resetMatch": "activity",
+      "excludeActivityIds": [
+        ".mvi.splash.SplashActivity"
+      ],
       "activityIds": [
+        ".mvi.splash.SplashActivity",
+        ".mvi.splash.AdActivity",
+        ".mvi.home.HomeActivity",
+        "com.yfanads.android.core.act.YFInterstitialActivity",
         "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
+        "com.yfanads.android.adx.core.TransparentActivity",
+        "com.yfanads.android.adx.core.DialogProxyActivity",
+        "com.yfanads.android.adx.webview.AdxWebViewActivity",
+        "com.qq.e.ads.ADActivity",
+        "com.qq.e.ads.PortraitADActivity",
+        "com.qq.e.ads.LandscapeADActivity",
+        "com.qq.e.ads.DialogActivity",
         "com.byazt.cef.Stub_",
+        "com.kwad.sdk.api.proxy.app.AdWebViewActivity",
         "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
+        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADWebViewActivity",
         "com.tianmu.biz.activity.InterstitialActivity",
         "com.tianmu.biz.activity.LandscapeInterstitialActivity",
         "com.adgain.sdk.base.activity.AdActivity",
         "com.baidu.mobads.sdk.api.AppActivity",
+        "com.baidu.mobads.sdk.api.BdShellActivity",
         "com.bytedance.msdk.api.activity.TTTransparentActivity",
-        "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity",
-        ".mvi.home.HomeActivity"
+        "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
+        "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity"
       ],
       "actionCd": 2500,
-      "actionMaximum": 2,
+      "actionMaximum": 3,
       "rules": [
         {
-          // 部分 SDK 把「广告」放在 contentDescription 而不是 text，一并覆盖。
+          // 包含匹配而非精确匹配：京东互动插屏的标签常写成「摇一摇查看广告」
+          // 「上滑查看更多内容」，精确 text="广告" 永远命中不了。后半段是
+          // dex 中实证存在的京东 Lottie 互动引导语，用于关闭按钮完全读不到
+          // 节点时兜底（action 是 back，命中素材文案不会跳落地页）。
           "key": 0,
           "action": "back",
-          "matches": "[text=\"广告\" || desc=\"广告\"][visibleToUser=true]"
+          "matches": "[text*=\"广告\" || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\" || text*=\"滑动查看详情\" || text*=\"立即领取\"][visibleToUser=true]"
         }
       ]
     }
