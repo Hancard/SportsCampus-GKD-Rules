@@ -44,10 +44,10 @@ https://fastly.jsdelivr.net/gh/Hancard/SportsCampus-GKD-Rules@main/subscription.
 > 2026-11-09 实测仍返回 **`version 1`**（加 `?v=3` 查询参数也无法绕过），会拿到带
 > `[clickable=true]`、组 102 默认禁用的最旧规则，表现就是「仓库明明更新了、广告照旧」。
 > `fastly.jsdelivr.net`、`github.com/.../raw/main/` 与固定 commit SHA 的 CDN 链接均实测返回当前版本。
-> **导入后请在 GKD 订阅页核对版本号是否为 `version: 7`**；不是就换 raw / fastly 链接重新导入。
+> **导入后请在 GKD 订阅页核对版本号是否为 `version: 8`**；不是就换 raw / fastly 链接重新导入。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
-后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 7`）。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 8`）。
 若之前已导入过本订阅，在订阅页手动刷新一次即可拿到最新规则。
 
 ### 方式 B：本地粘贴应用规则
@@ -117,7 +117,7 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 **当时的** 9 个 `vid` 全部用脚本核实为本包 `resources.arsc` 中 **type=id 的真实资源名**
 （4865 个 id 里逐个查得）；`jad_interstitial_close_view` / `jad_back_close` 只是 layout
 名而非 id，写进 `vid` 会永不触发，故未采用。9 个的规模本身在第三轮之二被证明远远不够，
-现为 34 个。
+现为 39 个。
 
 **第二轮**（`version 3`）复核了模板与官方 schema，又发现两个确凿缺陷：
 
@@ -137,7 +137,7 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 用 `vid` 匹配的方向本身没错，问题出在 `clickable` 条件。
 
 > 仍是**静态推断**：截图看不到节点树，无法确认 X 按钮的 `vid` / `desc` 及承载
-> `activityId`。若更新到 `version 7` 后该广告仍未跳过，请抓 GKD 快照
+> `activityId`。若更新到 `version 8` 后该广告仍未跳过，请抓 GKD 快照
 > （`i.gkd.li/i/...`，先脱敏）并附上触发记录里的 `activityId`，按真实节点收窄选择器。
 
 ### 第三轮之一：官方 API 语义复核与参数自相矛盾（2026-11-10，`version 4`）
@@ -176,7 +176,8 @@ activity** 全量反查一遍后，发现之前的规则有两个覆盖型缺陷
    AdGain `adgain_interstitial_close_text`、MIMO `mimo_interstitial_close_img`、
    HiAd `hiad_banner_close_button` 等。原白名单里只有 `tianmu_suspend_iv_close`
    （悬浮广告专用）和 `ksad_interstitial_close_outer`，主插屏的关闭按钮全部落空。
-   现补齐到 **34 个 `vid`**，逐个用脚本核对为真实 `type=id` 资源名。
+   当时补齐到 **34 个 `vid`**（第四轮之二再扩到 39 个），逐个用脚本核对为真实
+   `type=id` 资源名。
 2. **广告容器白名单漏了整条链路**。manifest 里明确存在百度
    `com.baidu.mobads.sdk.api.AppActivity` / `BdShellActivity`、穿山甲
    `com.bytedance.msdk.api.activity.TTTransparentActivity` /
@@ -247,8 +248,45 @@ WebView 或任何 `mvi/run`、`mvi/sport` 业务页面放进白名单。所有�
 > 边界：`indexScreen` 等字段只说明广告位存在，**不能证明弹窗的真实 `activityId`
 > 与关闭按钮的节点属性**。`assets/jad_slideup.json` 是 Lottie 动画，内部没有任何
 > close 字段，关闭按钮是 SDK 原生 View；它究竟带 `vid`、`text` 还是什么都没有，
-> 只有真机快照能确定。若升到 `version 7` 后仍漏，请按下方「真机排障 → 抓快照」
+> 只有真机快照能确定。若升到 `version 8` 后仍漏，请按下方「真机排障 → 抓快照」
 > 提供 `activityId` 与节点树，据此收窄选择器。
+
+### 第四轮之二：京东「笑脸 / 礼金」弹窗的关闭按钮漏项（2026-11-10，`version 8`）
+
+批次 1 修完时序后，把 `resources.arsc` 的 **4865 个 `type=id` 资源名**按
+`close` / `skip` / `dismiss` 全量反查，得到 60 个候选、其中 38 个此前未收录。
+逐个按「广告 SDK 专属前缀 / 非 reward / 非关闭区域 / 非业务通用名」筛完，
+发现一组**确凿漏项**：
+
+| 新增 `vid` | 归属 |
+|---|---|
+| `iv_jd_home_smile_close` | 京东首页「笑脸」弹窗 |
+| `iv_jd_smill_close` | 京东笑脸弹窗（SDK 内拼写为 smill） |
+| `iv_jdwm_smile_close` | 京东万盟笑脸弹窗 |
+| `jad_video_skip_btn` | 京东视频广告跳过 |
+| `mimo_interstitial_endpage_close_img` | MIMO 插屏结束页 |
+
+前三个与已收录的 `jd_lijin_close` / `jdwm_close` 同属
+`jd_home_smile_background` / `jd_home_small_layout` / `jd_lijin_big` 资源族
+（dex 字符串上下文实证），正是「进入 App 几秒后、必须手动关掉的京东弹窗」
+那一族。此前 34 个 `vid` 里只有 `jd_close` / `jd_lijin_close` / `jdwm_close`，
+恰好漏掉了 smile 系列的主关闭按钮。
+
+同时补 3 个**纯文本关闭信号** `text="关闭"` / `text="×"` / `text="✕"`：
+组 100 只匹配 `text*="跳过"`，组 101 原本只匹配 `vid` 与 `desc*="关闭"`，
+一个只暴露 text、既无 `vid` 也无 `desc` 的自定义关闭 View 会三层全落空。
+这三个信号仍合并在组 101 的**同一条 rule** 里，同一节点只会被点一次。
+
+顺带复核了此前的判定：`jad_interstitial_close_view`、`jad_back_close`、
+`jad_skip_btn` 确实**不在** 4865 个 `type=id` 名字里（只是 layout / string 名），
+写进 `vid` 会永不触发，继续保持排除。也刻意没收 `ad_close_area` /
+`ad_close_delay_area` 这类「关闭区域」——它们往往是整块遮罩，点击等于点广告
+素材会打开落地页；以及所有 `ksad_*_reward_*` 激励视频资源。
+
+> 仍然要强调：`vid` 是资源名，不等于运行时节点一定带这个 id。京东互动广告用
+> `Resources.getIdentifier` 动态取 id，关闭 View 也可能完全无 id。若升到
+> `version 8` 后弹窗还在，请按下面「真机排障 → 抓快照」把 `activityId` 与
+> 节点树发来 —— 这是唯一能终结静态推断的办法。
 
 ## 版本核对
 
@@ -267,7 +305,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 验证与回退
 
-1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 7`；本地粘贴的确认末尾有
+1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 8`；本地粘贴的确认末尾有
    `// === END OF FILE ===` 且组 101 的单条规则里同时含 `vid=` 与 `desc*="关闭"`。
    版本不对，后面测了也白测。
 2. 三个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
@@ -293,8 +331,8 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
 | 仓库已更新但广告照旧、规则内容没变 | 用 `cdn.jsdelivr.net` 导入，订阅被缓存停在 `version 1` | 在 GKD 订阅页核对版本号；改用 raw 或 fastly 链接重新导入，`?v=` 参数不能绕过缓存 |
-| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 7`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
-| **开屏 / 固定式能拦，进入 App 几秒后的弹窗拦不住** | `version 6` 及更早：组 100 开屏点过一次后整次会话休眠、组 102 的 8 秒窗口已耗尽且白名单缺 Dialog 类容器 | 升到 `version 7`；核对订阅页版本号，仍漏就抓快照确认弹窗的 `activityId` 与关闭节点 |
+| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 8`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
+| **开屏 / 固定式能拦，进入 App 几秒后的弹窗拦不住** | `version 6` 及更早：组 100 开屏点过一次后整次会话休眠、组 102 的 8 秒窗口已耗尽且白名单缺 Dialog 类容器 | 升到 `version 8`；核对订阅页版本号，仍漏就抓快照确认弹窗的 `activityId` 与关闭节点 |
 | 关闭按钮被连点两下、反而打开了广告落地页 | 旧版组 101 把 `vid` 与 `desc*="关闭"` 拆成两条 rule，同一按钮被命中两次 | 确认已升到 `version 4` 或更新；两条已合并为单条 rule。仍复现就关掉上游订阅排查双规则源 |
 | 返回键兜底只按了一次就没动静 | 旧版 `actionCd` 与 `matchTime` 同为 8000，第二次永远排不进窗口 | 确认已升到 `version 4` 或更新，`actionCd` 应为 2500 |
 | 首页被自动退出 | 组 102 的返回键没被广告浮层消费 | 在 GKD 界面单独关掉组 102，组 100 / 101 继续生效；附快照提 issue |
@@ -304,8 +342,18 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 一次开屏连点两下 | 两个规则源同时生效 | 二选一：只留上游订阅，或只留本规则 |
 | 跑步途中出现自动点击 | **立刻关闭 GKD 无障碍开关** | 附触发记录提 issue，核对 `excludeActivityIds` 是否覆盖该页面 |
 
-抓快照：GKD → 快照 / 触发记录 → 分享得到 `i.gkd.li/i/...` 链接。
-**先脱敏**（账号、学校、位置、成绩），不要贴原始截图或完整 logcat。
+抓快照（判断漏拦时最关键的一步）：
+
+1. 等弹窗出现时，先看 GKD →「触发记录」：这一刻有没有规则命中、命中的
+   `activityId` 是什么。**没有任何记录**说明该页面根本不在 `activityIds`
+   白名单里，或规则已因 `matchTime` / `actionMaximum` 休眠。
+2. GKD →「快照」（或触发记录里的「查看快照」）→ 分享，得到 `i.gkd.li/i/...`
+   链接。务必在**弹窗还在屏幕上**时抓，抓早了节点树里没有广告层。
+3. 在快照里找右上角的 X / 关闭按钮，看它的 `vid`、`text`、`desc`、
+   `visibleToUser` 与 `clickable`。若三者全空，说明是纯绘制的 View，
+   只能靠 `back` 或按快照里的相对层级收窄，不能靠 `vid` 继续猜。
+4. **先脱敏**（账号、学校、位置、成绩），不要贴原始截图或完整 logcat。
+   把链接 + 触发记录里的 `activityId` 一起发 issue，就能按真实节点定规则。
 
 ## 已知限制
 
