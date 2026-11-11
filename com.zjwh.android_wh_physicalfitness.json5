@@ -100,6 +100,12 @@
       "actionMaximum": 2,
       "resetMatch": "activity",
       "actionCd": 1500,
+      // 2026-11-11 第五轮：本组按 text*="跳过" 全局匹配，与组 101 白名单里的
+      // skip 类 vid 是「职责互补」而非「节点互斥」。同一跳过按钮若同时带文本
+      // 与资源 ID，可能被两组各点一次，已写入 README 排障表。当前刻意不移除
+      // 组 101 的 skip 类 vid：部分 SDK 的跳过按钮只暴露 vid 而没有文本，
+      // 删掉会漏拦。fastQuery:true 经官方 optimize#rule-format 复核有效 ——
+      // 首个属性表达式 text*="跳过" 属于允许的 [text*='abc'] 格式。
       "rules": [
         {
           "key": 0,
@@ -214,6 +220,14 @@
           // 组 102 按 back），且仍在同一条 rule 里，同一个节点只会被点一次。
           // 用于兜住「关闭按钮只暴露 text、既无 vid 也无 desc」的自定义 View。
           //
+          // 2026-11-11 第五轮（官方 optimize#rule-format 复核）：本条 43 个
+          // `||` 分支里只有 desc*="关闭" 一个不合规（快速查询只认 id/vid/text），
+          // 按官方规则整条 rule 必须停用全局快速查询 —— 全树遍历是刻意取舍，
+          // 不是漏配。另：白名单含 jad_splash_skip_btn / hiad_btn_skip 等
+          // skip 类 vid，与组 100 的 text*="跳过" 没有做节点级互斥；同一个
+          // 跳过按钮若同时带文本与资源 ID，可能被两组各点一次。真机出现
+          // 「一次开屏连点两下」时，除排查双规则源外也要考虑此项。
+          //
           // 2026-11-09 二次修复：末尾的 [clickable=true] 是错误约束。官方
           // RawRuleProps 明确 action 默认 "click" 会自动判断：clickable 用
           // clickNode，否则降级 clickCenter；clickNode 未被接收也会回落
@@ -230,21 +244,19 @@
       "name": "广告标签-返回键兜底",
       // 触发条件是屏幕上出现「广告」标签（京东 / 穿山甲插屏右下角都有），
       // 用于上面两组都读不到关闭按钮节点时的最后兜底。
-      // 2026-11-09 二次修复：改为默认启用。此前 enable:false 让京东礼金互动
-      // 插屏在关闭按钮读不到节点时完全没有兜底，真机反馈仍有广告。
-      //
-      // 2026-11-10 修复参数矛盾：此前 actionCd 8000 与 matchTime 8000 相等。
-      // 官方 RawCommonProps 定义：matchTime 是「规则参与查询屏幕节点时，等待
-      // 一段时间后休眠此规则」，actionCd 是「执行 action 最小间隔」。两者都取
-      // 8000 且 resetMatch=app（只有重新进入 App 才唤醒），意味着第一次返回键
-      // 之后规则已进入 8 秒冷却，而 8 秒窗口同时耗尽 → 第二次永远不可能执行，
-      // actionMaximum:2 是死配置，注释/README 声称「最多按 2 次」与实现不符。
-      // 现把 actionCd 降到 2500，让 2 次返回键在 8 秒窗口内真正可达；若第一次
-      // 已关掉广告，节点消失，第二次自然不会触发。
-      // ⚠️ activityIds 含 .mvi.home.HomeActivity：首页浮层若不消费返回键，
+      // 【历史记录，勿当作当前配置】以下三段是 v2 → v4 的修复过程：
+      // - 2026-11-09：原本 enable:false，改为默认启用（当时关闭按钮读不到
+      //   节点时三层规则全落空）。
+      // - 2026-11-10 第三轮：当时 actionCd 与 matchTime 同为 8000、
+      //   resetMatch:"app"、actionMaximum:2，第一次返回键后 8 秒窗口与冷却
+      //   同时耗尽，第二次永远排不进窗口（死配置）；当时把 actionCd 降为 2500。
+      // - 2026-11-10 第四轮：再放宽 matchTime 到 20000、resetMatch 改
+      //   "activity"、actionMaximum 改 3，以覆盖「进入 App 几秒后才弹」的广告。
+      // 当前生效值一律以本组下方字段为准：
+      //   matchTime 20000 / actionMaximum 3 / resetMatch "activity" / actionCd 2500。
+      // ⚠️ 白名单含 .mvi.home.HomeActivity：首页浮层若不消费返回键，
       //    按返回键可能退出首页（只影响当前页面，不影响计时/轨迹/成绩）。
-      //    仍有 matchTime 8000 + actionMaximum 2 + resetMatch app 限流。
-      //    若实测发现误退出，在 GKD 界面里直接关掉本组即可，无需改文件。
+      //    若实测发现误退出，在 GKD 界面里单独关掉本组即可，无需改文件。
       //
       // 2026-11-10 第四轮：真机反馈「开屏 / 固定式能拦，几秒后弹窗拦不住」。
       // ① 原 matchTime 8000 + resetMatch:"app"：窗口从进入 App 起算且同会话
@@ -254,8 +266,8 @@
       // ② 原白名单只有 10 项，缺的 14 项恰好大多是 Dialog / Transparent /
       //    插屏容器（DialogProxyActivity、TransparentActivity、DialogActivity、
       //    AdActivity、JADWebViewActivity…）—— 正是「弹窗」类广告的宿主。
-      //    关闭按钮读不到节点时，本组在这些容器上根本不生效。现与组 101
-      //    对齐补齐到 24 项。
+      //    关闭按钮读不到节点时，本组在这些容器上根本不生效。当时对齐到 24 项；
+      //    第五轮删掉其中被 excludeActivityIds 遮蔽的 SplashActivity，现为 23 项。
       // ③ 触发条件原为精确 [text="广告"]，但京东互动弹窗的屏幕文案是
       //    「摇一摇查看广告」「上滑查看更多内容」这类含子串文本，精确匹配
       //    全部漏掉。改用包含匹配并补入京东互动引导语；本组 action 是 back
@@ -266,8 +278,11 @@
       "excludeActivityIds": [
         ".mvi.splash.SplashActivity"
       ],
+      // 2026-11-11 第五轮：删除曾被 excludeActivityIds 完全遮蔽的
+      // .mvi.splash.SplashActivity。官方 RawAppRuleProps 明确
+      // 「excludeActivityIds 优先级高于 activityIds」，保留它只会造成
+      // 「声明 24 项、实际生效 23 项」的自相矛盾。
       "activityIds": [
-        ".mvi.splash.SplashActivity",
         ".mvi.splash.AdActivity",
         ".mvi.home.HomeActivity",
         "com.yfanads.android.core.act.YFInterstitialActivity",

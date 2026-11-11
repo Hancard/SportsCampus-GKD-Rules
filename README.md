@@ -49,10 +49,10 @@ https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 > smile 关闭按钮，表现正是「仓库明明更新了、几秒后的弹窗广告照旧」。
 > 2026-11-10 实测只有 `raw.githubusercontent.com/.../main/` 与
 > `github.com/.../raw/main/` 两个链接返回当前版本；`raw.gitmirror.com` 则 TLS 握手失败。
-> **导入后请在 GKD 订阅页核对版本号是否为 `version: 8`**；不是就换上面两个链接重新导入。
+> **导入后请在 GKD 订阅页核对版本号是否为 `version: 9`**；不是就换上面两个链接重新导入。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
-后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 8`）。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 9`）。
 若之前已导入过本订阅，在订阅页手动刷新一次即可拿到最新规则。
 
 ### 方式 B：本地粘贴应用规则
@@ -72,8 +72,10 @@ GKD → 订阅 → 本地订阅 → 应用规则 → + → 粘贴整段 JSON5 �
 
 ## 与上游订阅的关系
 
-本规则是**补充**：组 100 按文本匹配开屏「跳过」，组 101 按资源 ID 匹配广告容器里的
-关闭按钮，两者选择器不重叠，不会命中同一节点。主规则仍建议用持续维护的
+本规则是**补充**：组 100 按文本匹配开屏「跳过」，组 101 按资源 ID /
+contentDescription 匹配广告容器里的关闭按钮。两者是**职责互补而非节点互斥**：
+若某个跳过按钮同时带 `text*="跳过"` 与组 101 白名单里的 skip 类 `vid`，两组可能
+各点一次（见「真机排障」）。主规则仍建议用持续维护的
 [`Lin-arm/GKD_subscription`](https://github.com/Lin-arm/GKD_subscription)，任选一个订阅地址：
 
 ```
@@ -102,9 +104,10 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 |---|---|---|
 | 100 | 开屏 / 首页弹窗「跳过」文本兜底 | `matchTime 20000`、`actionMaximum 2`、`resetMatch: activity`、`actionCd 1500`；`excludeActivityIds` 41 项覆盖本包 136/140 个业务 Activity，只留 4 个广告宿主 |
 | 101 | 全屏 / 插屏广告关闭按钮 | `activityIds` 白名单 24 项（startWith 匹配），`actionCd 1500`；**单条 rule** 用 `\|\|` 连接已核实的 `vid` 与 `desc*="关闭"`，避免同一按钮被点两次 |
-| 102 | 广告标签 / 京东互动引导语返回键兜底 | **默认启用**；前两组读不到节点时按返回键；白名单 24 项（与组 101 对齐），`excludeActivityIds` 单独排除启动入口 `SplashActivity`；`matchTime 20000`、`actionMaximum 3`、`resetMatch: activity`、`actionCd 2500` 限流 |
+| 102 | 广告标签 / 京东互动引导语返回键兜底 | **默认启用**；前两组读不到节点时按返回键；白名单 **23 项**（组 101 为 24 项，本组另有 `excludeActivityIds` 优先排除启动入口 `SplashActivity`）；`matchTime 20000`、`actionMaximum 3`、`resetMatch: activity`、`actionCd 2500` 限流 |
 
-组 100 与组 101 是**按文本 / 按资源 ID 与 contentDescription 互补**，不是同一条规则写两遍。激励视频 / 奖励页、
+组 100 与组 101 是**按文本 / 按资源 ID 与 contentDescription 互补**，不是同一条规则写两遍；
+但二者没有做节点级互斥，详见「已知限制」。激励视频 / 奖励页、
 `mvi.run` / `mvi.sport` / `RunPlanActivity` 均不在匹配范围内；无硬编码屏幕坐标、无跨应用全局规则。
 组 102 只在广告容器白名单内按返回键，**不会作用于跑步页**；`excludeActivityIds` 单独排除
 `SplashActivity`，因为在启动入口按返回键会直接退出 App。返回键即使命中广告素材文案
@@ -331,7 +334,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 验证与回退
 
-1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 8`；本地粘贴的确认末尾有
+1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 9`；本地粘贴的确认末尾有
    `// === END OF FILE ===` 且组 101 的单条规则里同时含 `vid=` 与 `desc*="关闭"`。
    版本不对，后面测了也白测。
 2. 三个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
