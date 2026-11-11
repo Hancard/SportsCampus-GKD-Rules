@@ -3,15 +3,16 @@
 //
 // 导入：GKD → 订阅 → + → 粘贴下面这个 URL（不要复制本文件内容）
 //   https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5
-// 国内备用（2026-11-10 实测与 main 同步）：
+// 国内备用（三时点实测始终与 main 同步）：
 //   https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
-// ⚠️ 不要用任何 jsdelivr 节点（cdn.jsdelivr.net / fastly.jsdelivr.net /
-//    gcore.jsdelivr.net）：它们对 @main 有长缓存，
-//    实测 cdn 长期停在 version 1，version 8 发布时 fastly / gcore 仍停在
-//    version 6（purge.jsdelivr.net 主动刷新后也未同步），会拿到旧规则。
+// ⚠️ 不推荐任何 jsdelivr 节点（cdn.jsdelivr.net / fastly.jsdelivr.net /
+//    gcore.jsdelivr.net）：它们对 @main 有不可控的长缓存，cdn 曾长期停在
+//    version 1；version 8 发布后 fastly / gcore 滞后约 18 小时才追上，
+//    version 9 发布后又一刻钟内仍停在 version 8。滞后期间会拿到旧规则，
+//    导入后务必在 GKD 订阅页核对 version。
 //
 // 本订阅刻意不写 updateUrl：官方 RawSubscription 规定该字段缺失时，GKD 会
-// 「使用添加订阅时填写的链接」检查更新。这样用 fastly 导入就一直走 fastly，
+// 「使用添加订阅时填写的链接」检查更新。这样用哪个链接导入就一直用哪个链接，
 // 不会像旧版那样在自动更新时回落到国内不通的 raw 链接。
 //
 // 本订阅 apps[0].groups 与 com.zjwh.android_wh_physicalfitness.json5 完全一致。

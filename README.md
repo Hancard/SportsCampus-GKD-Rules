@@ -38,17 +38,17 @@ https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 > 强制回落到大概率不通的 raw，表现是「仓库明明更新了，广告照旧」。官方
 > [RawSubscription](https://gkd.li/api/interfaces/RawSubscription) 明确：`updateUrl`
 > 缺失时「使用添加订阅时填写的链接」，故已移除该字段。**若你此前是用
-> `*.jsdelivr.net` 任何节点导入的，请在 GKD 里删掉该订阅，改用上面两个链接之一
-> 重新导入** —— 缓存节点不会自己追上 `main`。
+> `*.jsdelivr.net` 任何节点导入的，建议删掉该订阅、改用上面两个链接之一重新导入**：
+> 缓存节点每次发版后都会重新滞后数小时到一天（见「第四轮之三」三时点实测），
+> 滞后期间 GKD 一直拿到旧规则。
 
-> ⚠️ **不要用任何 `*.jsdelivr.net` 节点导入订阅**（`cdn.jsdelivr.net` /
-> `fastly.jsdelivr.net` / `gcore.jsdelivr.net` 都一样）。
-> 它们对 `@main` 有很长的缓存周期，实测：`cdn` 曾长期停在 **`version 1`**；
-> `version 8` 发布时 `fastly` 与 `gcore` 仍返回 **`version 6`**，调用
-> `purge.jsdelivr.net` 主动刷新后也没有立刻同步。旧规则缺本轮的时序修复与京东
-> smile 关闭按钮，表现正是「仓库明明更新了、几秒后的弹窗广告照旧」。
-> 2026-11-10 实测只有 `raw.githubusercontent.com/.../main/` 与
-> `github.com/.../raw/main/` 两个链接返回当前版本；`raw.gitmirror.com` 则 TLS 握手失败。
+> ⚠️ **不推荐用任何 `*.jsdelivr.net` 节点导入订阅**（`cdn.jsdelivr.net` /
+> `fastly.jsdelivr.net` / `gcore.jsdelivr.net` 都一样）：它们对 `@main` 有不可控的
+> 长缓存，`cdn.jsdelivr.net` 曾长期停在 **`version 1`**；`version 8` 发布后
+> `fastly` / `gcore` 滞后约 18 小时才追上，而 `version 9` 一推上去又立刻停在
+> `version 8`（三时点实测见「第四轮之三」）。滞后期间拿到的旧规则缺第四轮时序
+> 修复与京东 smile 关闭按钮，表现正是「仓库明明更新了、几秒后的弹窗广告照旧」。
+> `raw.gitmirror.com` 则 TLS 握手失败，同样不可用。
 > **导入后请在 GKD 订阅页核对版本号是否为 `version: 9`**；不是就换上面两个链接重新导入。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **3 个规则组（100/101/102）**。
@@ -296,26 +296,27 @@ WebView 或任何 `mvi/run`、`mvi/sport` 业务页面放进白名单。所有�
 > `version 8` 后弹窗还在，请按下面「真机排障 → 抓快照」把 `activityId` 与
 > 节点树发来 —— 这是唯一能终结静态推断的办法。
 
-### 第四轮之三：备用订阅链接实测（2026-11-10，`version 8`）
+### 第四轮之三 / 第五轮复核：备用订阅链接的三时点实测
 
 `version 8` 推上去后逐个实测导入链接，发现一个会直接让前面两批修复落空的
-交付问题：
+交付问题；`version 9` 推送前后又各测一次，确认这是**周期性滞后**而非一次性故障：
 
-| 链接 | 实测返回 |
-|---|---|
-| `raw.githubusercontent.com/.../main/subscription.json5` | `version 8` |
-| `github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5` | `version 8` |
-| `fastly.jsdelivr.net/gh/...@main/...` | `version 6` |
-| `gcore.jsdelivr.net/gh/...@main/...` | `version 6` |
-| `raw.gitmirror.com/...` | TLS 握手失败 |
+| 链接 | 11-10 16:xx（v8 刚发布） | 11-11 10:xx（v9 推送前） | 11-11 10:xx（v9 推送后） |
+|---|---|---|---|
+| `raw.githubusercontent.com/.../main/subscription.json5` | `version 8` | `version 8` | **`version 9`** |
+| `github.com/.../raw/main/subscription.json5` | `version 8` | `version 8` | **`version 9`** |
+| `fastly.jsdelivr.net/gh/...@main/...` | `version 6` | `version 8` | `version 8` |
+| `gcore.jsdelivr.net/gh/...@main/...` | `version 6` | `version 8` | `version 8` |
+| `cdn.jsdelivr.net/gh/...@main/...` | 未测（曾长期停在 `version 1`） | `version 8` | `version 8` |
+| `raw.gitmirror.com/...` | TLS 握手失败 | 未复测 | 未复测 |
 
-也就是说 README 之前推荐的「fastly 备用（实测与 main 同步）」已经不成立：用
-fastly 导入的用户拿到的是 `version 6`，既没有组 100/102 的时序修复，也没有京东
-smile 系列关闭按钮，现象恰好还是「几秒后的弹窗拦不住」。调用
-`purge.jsdelivr.net` 主动刷新返回 `finished` 后复查仍是 `version 6`，说明不能依赖
-它自动追上。已把备用链接改为实测同步的 `github.com/.../raw/main/`，并在导入说明
-里要求用 jsdelivr 导入过的用户**删掉订阅重新导入**。规则本体未变，故 `version`
-保持 8。
+结论：jsDelivr 全系节点**会**追上 `main`，但每次发版后重新滞后数小时到一天
+（v8 滞后约 18 小时，v9 推送后一刻钟内仍停在 v8）；`purge.jsdelivr.net`
+主动刷新返回 `finished` 后也不会立刻同步。所以准确的说法是**延迟不可控**，
+而不是「永远不会追上」——但仍不能作为首选导入链接。备用链接已改为三时点
+始终同步的 `github.com/.../raw/main/`，并要求用 jsdelivr 导入过的用户
+**删掉订阅重新导入**。`37dff21`（换链接）规则本体未变，`version` 保持 8；
+`version 9` 来自第五轮批次 1 的规则清理。
 
 ## 版本核对
 
@@ -359,8 +360,8 @@ manifest 里不存在，写成它会导致规则永不触发。
 |---|---|---|
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
-| 仓库已更新但广告照旧、规则内容没变 | 用 `*.jsdelivr.net` 任一节点导入，订阅被缓存停在旧 `version` | 在 GKD 订阅页核对版本号；**删掉订阅**，改用 `raw.githubusercontent.com` 或 `github.com/.../raw/main/` 重新导入，`?v=` 参数不能绕过缓存 |
-| 订阅页停在 `version 6`、几秒后弹窗仍拦不住 | 用 `fastly` / `gcore` 节点导入，缓存住了 `version 6` | 同上，删掉重新导入；`version 6` 不含第四轮的时序修复 |
+| 仓库已更新但广告照旧、规则内容没变 | 用 `*.jsdelivr.net` 任一节点导入，每次发版后缓存滞后数小时到一天 | 在 GKD 订阅页核对版本号；**删掉订阅**，改用 `raw.githubusercontent.com` 或 `github.com/.../raw/main/` 重新导入，`?v=` 参数不能绕过缓存 |
+| 订阅页停在旧 `version`、几秒后弹窗仍拦不住 | 缓存节点还没追上 `main`（v9 发布后仍停在 `version 8`） | 同上，删掉重新导入；`version 6` 及更早不含第四轮的时序修复 |
 | 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 8`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
 | **开屏 / 固定式能拦，进入 App 几秒后的弹窗拦不住** | `version 6` 及更早：组 100 开屏点过一次后整次会话休眠、组 102 的 8 秒窗口已耗尽且白名单缺 Dialog 类容器 | 升到 `version 8`；核对订阅页版本号，仍漏就抓快照确认弹窗的 `activityId` 与关闭节点 |
 | 关闭按钮被连点两下、反而打开了广告落地页 | 旧版组 101 把 `vid` 与 `desc*="关闭"` 拆成两条 rule，同一按钮被命中两次 | 确认已升到 `version 4` 或更新；两条已合并为单条 rule。仍复现就关掉上游订阅排查双规则源 |
@@ -369,7 +370,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 冷启动完全没有触发记录 | 无障碍被 vivo 回收、规则未保存成功 | 查 GKD 服务状态、电池白名单、多任务锁定；重新粘贴一次 |
 | 有触发记录但广告还在 | 命中的是旧节点，或广告页不在白名单 | 看触发记录里的 `activityId`，把脱敏快照发 issue |
 | 首页正常按钮被点 | 组 101 白名单误命中业务节点 | 先关组 101，确认是否发生在 `mvi.home.HomeActivity` |
-| 一次开屏连点两下 | 两个规则源同时生效 | 二选一：只留上游订阅，或只留本规则 |
+| 一次开屏连点两下 | 两个规则源同时生效；或同一跳过按钮同时命中组 100 的 `text*="跳过"` 与组 101 的 skip 类 `vid` | 先二选一（只留上游订阅或只留本规则）；仍复现就临时关组 101 确认是否跨组重叠 |
 | 跑步途中出现自动点击 | **立刻关闭 GKD 无障碍开关** | 附触发记录提 issue，核对 `excludeActivityIds` 是否覆盖该页面 |
 
 抓快照（判断漏拦时最关键的一步）：
