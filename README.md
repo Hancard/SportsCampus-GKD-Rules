@@ -27,18 +27,26 @@ GKD → 订阅 → + → 粘贴 URL → 确认导入
 https://raw.githubusercontent.com/Hancard/SportsCampus-GKD-Rules/main/subscription.json5
 ```
 
-国内访问不稳时用 GitHub 自身的 raw 路径（2026-11-10 实测与 `main` 同步）：
+GitHub 网页入口（**不是独立备用**）：
 
 ```
 https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 ```
 
+> 这个路径最终会 **302 到 `raw.githubusercontent.com`**，只是入口域名不同，
+> 并不能绕开 raw 域名不通的问题。2026-11-12 本机实测：该 `github.com` 链接
+> 连续 3 次代理返回 `CONNECT tunnel failed, response 502`（`http=000`），
+> 而 `raw.githubusercontent.com` 稳定 `200`。当时 `version 8/9` 能同步只是
+> 因为两者本来就是同一份文件。**若 raw 确实打不开，请改用方式 B 本地粘贴**，
+> 或临时用 jsDelivr 节点但务必核对 `version`（可能滞后数小时到一天）。
+
 > **用哪个链接导入，后续就一直用哪个链接自动更新**（`version 6` 起）。此前订阅文件里
 > 硬编码了 `updateUrl` 指向 raw，导致用备用链接导入的用户在 GKD 自动检查更新时被
-> 强制回落到大概率不通的 raw，表现是「仓库明明更新了，广告照旧」。官方
+> 强制覆盖成 raw（在国内部分网络下可能不通），表现是「仓库明明更新了，广告照旧」。官方
 > [RawSubscription](https://gkd.li/api/interfaces/RawSubscription) 明确：`updateUrl`
 > 缺失时「使用添加订阅时填写的链接」，故已移除该字段。**若你此前是用
-> `*.jsdelivr.net` 任何节点导入的，建议删掉该订阅、改用上面两个链接之一重新导入**：
+> `*.jsdelivr.net` 任何节点导入的，建议删掉该订阅、改用上面的
+> `raw.githubusercontent.com` 链接重新导入**：
 > 缓存节点每次发版后都会重新滞后数小时到一天（见「第四轮之三」三时点实测），
 > 滞后期间 GKD 一直拿到旧规则。
 
@@ -314,10 +322,15 @@ WebView 或任何 `mvi/run`、`mvi/sport` 业务页面放进白名单。所有�
 结论：jsDelivr 全系节点**会**追上 `main`，但每次发版后重新滞后数小时到一天
 （v8 滞后约 18 小时，v9 推送后一刻钟内仍停在 v8）；`purge.jsdelivr.net`
 主动刷新返回 `finished` 后也不会立刻同步。所以准确的说法是**延迟不可控**，
-而不是「永远不会追上」——但仍不能作为首选导入链接。备用链接已改为三时点
-始终同步的 `github.com/.../raw/main/`，并要求用 jsdelivr 导入过的用户
-**删掉订阅重新导入**。`37dff21`（换链接）规则本体未变，`version` 保持 8；
+而不是「永远不会追上」——但仍不能作为首选导入链接。用 jsdelivr 导入过的用户
+请**删掉订阅重新导入**。`37dff21`（换链接）规则本体未变，`version` 保持 8；
 `version 9` 来自第五轮批次 1 的规则清理。
+
+> 2026-11-12 第六轮更正：上表里 `github.com/.../raw/main/` 之所以「三时点
+> 始终同步」，是因为它 **302 到 `raw.githubusercontent.com`**，本来就是同一份
+> 文件，不是独立线路。本机代理实测该域名连续 3 次 `502`（`http=000`），
+> 同期 raw 稳定 `200`。因此它**不能当作 raw 不通时的兜底**；真正的兜底是
+> 方式 B 本地粘贴。README 与订阅头里原先「国内备用」的措辞已一并纠正。
 
 ### 第五轮：官方语义复核与文档自洽（2026-11-11，`version 9`）
 
@@ -383,7 +396,8 @@ manifest 里不存在，写成它会导致规则永不触发。
 |---|---|---|
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
-| 仓库已更新但广告照旧、规则内容没变 | 用 `*.jsdelivr.net` 任一节点导入，每次发版后缓存滞后数小时到一天 | 在 GKD 订阅页核对版本号；**删掉订阅**，改用 `raw.githubusercontent.com` 或 `github.com/.../raw/main/` 重新导入，`?v=` 参数不能绕过缓存 |
+| 仓库已更新但广告照旧、规则内容没变 | 用 `*.jsdelivr.net` 任一节点导入，每次发版后缓存滞后数小时到一天 | 在 GKD 订阅页核对版本号；**删掉订阅**，改用 `raw.githubusercontent.com` 重新导入，`?v=` 参数不能绕过缓存 |
+| 主链接打不开，换 `github.com/.../raw/main/` 也打不开 | 该路径最终仍 302 到 `raw.githubusercontent.com`，不是独立线路（2026-11-12 本机实测 `github.com` 3/3 次代理 502） | 改用**方式 B 本地粘贴**；或临时用 jsDelivr 节点并核对 `version` |
 | 订阅页停在旧 `version`、几秒后弹窗仍拦不住 | 缓存节点还没追上 `main`（v9 发布后仍停在 `version 8`） | 同上，删掉重新导入；`version 6` 及更早不含第四轮的时序修复 |
 | 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 9`（或在 GKD 里看规则组 101 是否含「关闭」兜底）；仍无效就抓快照看真实 `vid` / `activityId` |
 | **开屏 / 固定式能拦，进入 App 几秒后的弹窗拦不住** | `version 6` 及更早：组 100 开屏点过一次后整次会话休眠、组 102 的 8 秒窗口已耗尽且白名单缺 Dialog 类容器 | 升到 `version 9`；核对订阅页版本号，仍漏就抓快照确认弹窗的 `activityId` 与关闭节点 |
