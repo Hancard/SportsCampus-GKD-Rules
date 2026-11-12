@@ -352,6 +352,49 @@ Activity、4865 个 `type=id` 名、订阅与规则 groups 深度比对、每个
 章节把只在 arsc 出现、并未写进规则的 `fl_native` / `ksad_ad_dislike`
 误列为规则 `vid` 的表述。规则行为只变了一处（删冗余项），故 `version` 升到 9。
 
+### 第六轮：变异测试与官方 schema 复核（2026-11-12，`version 9`）
+
+这一轮没有新的真机反馈，改为**反过来检验校验脚本本身**：不再继续堆断言，
+而是注入已知会破坏行为的改动，看既有 251 项检查能不能真的拦住。
+
+| 轮次 | 做法 | 结果 |
+|---|---|---|
+| 第一轮（`_probe/95_mutation_test.py`） | 14 个变异只改主规则文件 | 全部「被捕获」，但**多数是假阳性** —— 唯一失败的几乎都是「订阅 groups 与本地规则完全一致」。正常发布一定会重新生成订阅，那条断言届时必然通过 |
+| 第二轮（`_probe/96_mutation_resync.py`） | 16 个变异按真实流程「改规则 → 重生成订阅 → 全量校验」 | **3 个真实漏洞**：以下破坏性改动全部以 `rc=0` 通过 |
+
+3 个漏洞都落在组 101（它常驻首页、没有窗口限流，改坏的后果最隐蔽）：
+
+| 变异 | 若被误改的后果 | 修复 |
+|---|---|---|
+| 给组 101 加 `matchTime: 8000` | 重现第四轮「进入 App 几秒后的弹窗拦不住」——规则在弹窗出现前就休眠 | 断言：组 101 不得出现 `matchTime` / `actionMaximum` / `resetMatch` |
+| 删掉组 101 的 `actionCd: 1500` | 同一广告可能被连点，第二下容易落在素材上打开落地页（官方默认仅 1000ms） | 断言：`actionCd` 必须为 1500 |
+| 删掉选择器末尾 `[visibleToUser=true]` | 连不可见节点一起点，误伤范围扩大到整棵节点树 | 断言：选择器必须以 `[visibleToUser=true]` 结尾 |
+
+其余 13 个变异（删 `desc*="关闭"`、删组 100 的 `fastQuery`、两组同步删掉
+`HomeActivity` / 京东 JAD 容器、删组 102 的 `excludeActivityIds`、把
+`matchTime` 改回 8000、`action` 改成 `click`、`resetMatch` 改回 `app`、
+混入跑步页 / 通用 `btn_close`、拆成两条 rule、删 EOF 哨兵、把广告宿主
+加进排除列表等）都被既有断言捕获。修复后重跑第二轮得到
+`UNCAUGHT_AFTER_RESYNC=0`，校验项从 251 增至 258。
+
+> 校验脚本在 `_probe/`、**不在本仓库**（仓库按约定只发布规则），所以这三条
+> 不变量同时写进了规则文件组 101 的注释和下面「修改规则」章节 —— 那是仓库内
+> 唯一的防线。
+
+官方 schema 同步复核（把前几轮凭印象写下的部分逐条回查）：
+
+| 复核项 | 官方依据 | 结论 |
+|---|---|---|
+| 组级 `actionCd` / `matchTime` 是否合法 | `RawGroupProps` 继承 `RawCommonProps`；`fastQuery` 文档写「**此规则下**的所有选择器」 | 合法，组级参数无需下放到 rule |
+| `actionCd` 默认值 | `RawCommonProps`：默认 `1000` ms | 显式写 `1500` 有意义，删掉会退回更短的冷却 |
+| 订阅 `id` | `RawSubscription`：「新旧订阅文件 id 不一致则更新失败」「负数 id 被 GKD 内部使用」 | 固定正数 `248879535`，不得改动 |
+| `categories` / `globalGroups` / `apps[].name` | `RawSubscription` 三者均可选；`RawApp.name` 可选（未安装时的显示名） | 现有字段写法合法 |
+| `updateUrl` 缺失 | `RawSubscription`：「使用添加订阅时填写的链接」 | 第三轮之三的移除成立 |
+
+另外纠正了备用链接的不实陈述：`github.com/.../raw/main/` 最终 302 到
+`raw.githubusercontent.com`，不是独立线路；2026-11-12 本机实测该域名连续
+3 次代理 502（`http=000`），同期 raw 稳定 200。详见「导入」与「第四轮之三」。
+
 ## 版本核对
 
 规则中的 `activityIds` 与 39 个 `vid` 已逐项对照 7.3.93 的完整
@@ -387,6 +430,20 @@ manifest 里不存在，写成它会导致规则永不触发。
 - **方式 A**：同步更新 `subscription.json5` 里的 `apps[0].groups`（两处内容必须一致），
   并把顶层 `version` **+1**，否则 GKD 不会拉取更新；
 - **方式 B**：重新整段粘贴到 GKD 本地订阅（GKD 不会读取本仓库）。
+
+**必须保持的不变量**（第六轮变异测试证明，违反后既有校验可能全部放过）：
+
+| 组 | 不变量 | 违反后果 |
+|---|---|---|
+| 101 | 不得加 `matchTime` / `actionMaximum` / `resetMatch` | 首页延迟弹窗在规则休眠后才出现，重新漏拦 |
+| 101 | 保留 `actionCd: 1500` | 同一广告连点，可能点开落地页 |
+| 101 | 选择器末尾保留 `[visibleToUser=true]`、保持**单条 rule** | 误点不可见节点 / 同一按钮被点两次 |
+| 100 | 保留 `fastQuery: true`、`resetMatch: "activity"`、`actionMaximum: 2` | 开屏退回全树遍历 / 第二个广告位永不触发 |
+| 102 | 保留 `action: "back"`、`excludeActivityIds` 排除启动入口 | 命中素材跳落地页 / 按返回键直接退出 App |
+| 全部 | `activityIds` 不含任何 `*_reward_*`、跑步 / 成绩页 | 触碰红线 |
+
+改完请重新生成订阅（规则注释不会进订阅，但 `groups` 必须与主规则逐字段一致）
+并让 `version` 递增；本地粘贴方式不受 `version` 影响。
 
 每次改动后先走一遍完整跑步流程，确认计时 / 轨迹 / 成绩正常，再叠加上游订阅。
 
