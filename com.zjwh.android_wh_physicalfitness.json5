@@ -24,8 +24,9 @@
       "key": 100,
       "name": "开屏广告-跳过按钮兜底",
       // 社区常用的开屏跳过选择器，限定在本 App 内。
-      // 20 秒匹配窗口 + 每次 Activity 刷新最多点 2 次（开屏 1 次 + 首页弹窗
-      // 1 次），防止在首页反复误点；详见下方 matchTime 处的第四轮时序说明。
+      // 60 秒匹配窗口 + 每次 Activity 刷新最多点 4 次（开屏 1 次 + 首页弹窗
+      // 与队列轮播的后续广告），防止在首页反复误点；详见下方 matchTime 处的
+      // 第四轮 / 第八轮时序说明。
       // 本组没有 activityIds 白名单（否则会漏掉开屏宿主），所以用
       // excludeActivityIds 黑名单挡住所有业务页面 —— 这些页面可能出现「跳过」
       // 字样，但绝不能被自动点击。
@@ -96,10 +97,17 @@
       // 改为官方默认的 resetMatch:"activity"：SplashActivity → HomeActivity
       // 切换时重置；matchTime 放宽到 20 秒覆盖延迟弹窗；actionMaximum 2 允许
       // 开屏与弹窗各点一次；actionCd 1500 防止同一广告内连点。
-      "matchTime": 20000,
-      "actionMaximum": 2,
+      "matchTime": 60000,
+      "actionMaximum": 4,
       "resetMatch": "activity",
       "actionCd": 1500,
+      // 2026-11-13 第八轮（真机截图 toast「即将播放下一条广告」）：dex 中
+      // showMaxCacheAds x10 / adCache x27 / NextAd x8 / adQueue x3，且中文
+      // 字面量「即将播放下一条广告」实证存在 —— 预加载的多条广告会排成队列，
+      // 在同一个 Activity 内连续播放。轮播不切换 Activity，
+      // resetMatch:"activity" 不重置；原 actionMaximum:2 + matchTime:20000
+      // 在第 3 条广告起就休眠、20 秒后整窗过期。放宽到 4 次 / 60 秒，
+      // actionCd 1500 与黑名单不变，仍有硬上限且 actionCd < matchTime。
       // 2026-11-11 第五轮：本组按 text*="跳过" 全局匹配，与组 101 白名单里的
       // skip 类 vid 是「职责互补」而非「节点互斥」。同一跳过按钮若同时带文本
       // 与资源 ID，可能被两组各点一次，已写入 README 排障表。当前刻意不移除
@@ -109,7 +117,7 @@
       "rules": [
         {
           "key": 0,
-          "matches": "[text*=\"跳过\"][text.length<10][visibleToUser=true]"
+          "matches": "[text*=\"跳过\"][text.length<20][visibleToUser=true]"
         }
       ]
     },
@@ -170,7 +178,7 @@
           // fastQuery:true 因此完全无效（官方：不满足格式时开不开都不影响查询
           // 复杂度），是误导性配置。正确性优先，保留全树遍历。
           //
-          // 39 个 vid 均用 _probe/62_arsc_idtype.py 核实为本包 resources.arsc 中
+          // 78 个 vid 均用 _probe/62_arsc_idtype.py 核实为本包 resources.arsc 中
           // type=id 的真实资源名（4865 个 id 里逐个查得）。2026-11-10 第四轮之二：
           // 反查全部 60 个 close/skip 类 type=id 名，发现京东「笑脸 / 礼金」
           // 弹窗系列的三个主关闭按钮此前完全没进白名单：
@@ -215,12 +223,13 @@
           // ④ ad_close_area / ad_close_delay_area 等「关闭区域」与
           //   ksad_*_reward_* 激励视频（点击区域可能直接跳落地页 / 影响领奖）。
           //
-          // 2026-11-10 第四轮之二：末尾补入 3 个纯文本关闭信号。它们与组 100
+          // 2026-11-10 第四轮之二：末尾补入纯文本关闭信号（第八轮扩到 6 个）。
+      // 它们与组 100
           // 的 text*="跳过"、组 102 的 text*="广告" 不重叠（本组按 click，
           // 组 102 按 back），且仍在同一条 rule 里，同一个节点只会被点一次。
           // 用于兜住「关闭按钮只暴露 text、既无 vid 也无 desc」的自定义 View。
           //
-          // 2026-11-11 第五轮（官方 optimize#rule-format 复核）：本条 43 个
+          // 2026-11-11 第五轮（官方 optimize#rule-format 复核）：本条 85 个
           // `||` 分支里只有 desc*="关闭" 一个不合规（快速查询只认 id/vid/text），
           // 按官方规则整条 rule 必须停用全局快速查询 —— 全树遍历是刻意取舍，
           // 不是漏配。另：白名单含 jad_splash_skip_btn / hiad_btn_skip 等
@@ -245,8 +254,22 @@
           // clickCenter。京东自定义关闭 View 常把点击交给父容器或 onTouch，
           // isClickable() 为 false，加该条件会把它们整批筛掉。现只用
           // [visibleToUser=true] 排除不可见节点，不限制点击实现方式。
+          // 2026-11-13 第八轮（两张真机截图）：静态反查 4865 个 type=id 名，
+          // 含 close/skip/dismiss/cancel/exit/abort 的共 202 个，本规则原先只收 39 个。
+          // ① 电商「笑脸 / 品牌弹窗」家族此前只补了京东 3 个，其余 16 个
+          //    （iv_meituan_smile_close / iv_eleme_smile_close / iv_tb_home_smile_close /
+          //     iv_idlefish_smile_close / iv_wph_smile_close / iv_ks_smile_close /
+          //     iv_no_show_smill_close / iv_smill_close / kfc_wp_close 等）全漏 ——
+          //    不同电商素材用不同 vid，正是「同样弹窗有的能拦有的不能拦」的原因。
+          // ② 另补 22 个 AdGain / HiAd / KSAD / 天目 / MIMO 专属 skip-close，
+          //    仍不收 *_reward_*、ad_close_*_area、btn_close 等业务通用名。
+          // ③ resources.arsc 里同时存在「%1$dS | 跳过」与「%1$d秒 | 关闭」两套
+          //    倒计时文案；原 text="关闭" 精确匹配漏掉后者，改为短文案包含匹配
+          //    (text*="关闭" && text.length<=8)，并补 3 个叉号变体。
+          // ④ 刻意不把 text*="跳过" 加进本组：那会与组 100 必然同时命中同一
+          //    开屏按钮，造成每次开屏连点两下。开屏仍由组 100 负责。
           "key": 0,
-          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"over_ad_close\" || vid=\"lp_webview_iv_close\" || vid=\"baidu_wp_close\" || vid=\"jad_interstitial_close\" || vid=\"jad_banner_close\" || vid=\"jad_feed_close\" || vid=\"jad_splash_skip_btn\" || vid=\"jd_close\" || vid=\"jd_lijin_close\" || vid=\"jdwm_close\" || vid=\"tianmu_suspend_iv_close\" || vid=\"tianmu_iv_close\" || vid=\"tianmu_tv_close\" || vid=\"tianmu_banner_iv_close\" || vid=\"tianmu_widget_iv_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"adgain_interstitial_close_text\" || vid=\"adgain_splash_skip_text\" || vid=\"ksad_interstitial_close_outer\" || vid=\"ksad_interstitial_auto_close\" || vid=\"ksad_close_btn\" || vid=\"ksad_right_close\" || vid=\"ksad_ad_endcard_close_root\" || vid=\"ksad_detail_close_btn\" || vid=\"ksad_splash_endcard_close_img\" || vid=\"ksad_auto_close_btn\" || vid=\"mimo_interstitial_close_img\" || vid=\"mimo_template_close_img\" || vid=\"mimo_interstitial_skip\" || vid=\"hiad_banner_close_button\" || vid=\"hiad_btn_skip\" || vid=\"iv_jd_home_smile_close\" || vid=\"iv_jd_smill_close\" || vid=\"iv_jdwm_smile_close\" || vid=\"jad_video_skip_btn\" || vid=\"mimo_interstitial_endpage_close_img\" || desc*=\"关闭\" || text=\"关闭\" || text=\"×\" || text=\"✕\"][visibleToUser=true]"
+          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"over_ad_close\" || vid=\"lp_webview_iv_close\" || vid=\"baidu_wp_close\" || vid=\"jad_interstitial_close\" || vid=\"jad_banner_close\" || vid=\"jad_feed_close\" || vid=\"jad_splash_skip_btn\" || vid=\"jd_close\" || vid=\"jd_lijin_close\" || vid=\"jdwm_close\" || vid=\"tianmu_suspend_iv_close\" || vid=\"tianmu_iv_close\" || vid=\"tianmu_tv_close\" || vid=\"tianmu_banner_iv_close\" || vid=\"tianmu_widget_iv_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"adgain_interstitial_close_text\" || vid=\"adgain_splash_skip_text\" || vid=\"ksad_interstitial_close_outer\" || vid=\"ksad_interstitial_auto_close\" || vid=\"ksad_close_btn\" || vid=\"ksad_right_close\" || vid=\"ksad_ad_endcard_close_root\" || vid=\"ksad_detail_close_btn\" || vid=\"ksad_splash_endcard_close_img\" || vid=\"ksad_auto_close_btn\" || vid=\"mimo_interstitial_close_img\" || vid=\"mimo_template_close_img\" || vid=\"mimo_interstitial_skip\" || vid=\"hiad_banner_close_button\" || vid=\"hiad_btn_skip\" || vid=\"iv_jd_home_smile_close\" || vid=\"iv_jd_smill_close\" || vid=\"iv_jdwm_smile_close\" || vid=\"jad_video_skip_btn\" || vid=\"mimo_interstitial_endpage_close_img\" || vid=\"iv_custom_smile_close\" || vid=\"iv_didi_close\" || vid=\"iv_eleme_smile_close\" || vid=\"iv_fz_smile_close\" || vid=\"iv_idlefish_smile_close\" || vid=\"iv_ks_smile_close\" || vid=\"iv_meituan_smile_close\" || vid=\"iv_mt_hotel_smile_close\" || vid=\"iv_mt_shop_smile_close\" || vid=\"iv_mt_xh_smile_close\" || vid=\"iv_mt_yy_smile_close\" || vid=\"iv_no_show_smill_close\" || vid=\"iv_shangou_smile_close\" || vid=\"iv_smill_close\" || vid=\"iv_tb_home_smile_close\" || vid=\"iv_wph_smile_close\" || vid=\"kfc_wp_close\" || vid=\"adgain_interstitial_skip_ll\" || vid=\"adgain_interstitial_skip_text\" || vid=\"adgain_splash_skip_ll\" || vid=\"adgain_splash_skip_new_view\" || vid=\"hiad_skip_text\" || vid=\"ksad_auto_close_text\" || vid=\"ksad_banner_item_close\" || vid=\"ksad_card_close\" || vid=\"ksad_end_close_btn\" || vid=\"ksad_live_end_page_close_btn\" || vid=\"ksad_skip_view_skip\" || vid=\"ksad_splash_circle_skip_left_view\" || vid=\"ksad_splash_circle_skip_right_view\" || vid=\"ksad_splash_skip_left_view\" || vid=\"ksad_splash_skip_right_view\" || vid=\"ksad_web_tip_close_btn\" || vid=\"mimo_banner_view_close\" || vid=\"tianmu_library_close_tv\" || vid=\"tianmu_library_iv_close\" || vid=\"tianmu_library_iv_close_inside\" || vid=\"tianmu_library_iv_skip\" || vid=\"tianmu_widget_tv_skip\" || desc*=\"关闭\" || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
         }
       ]
     },
@@ -264,7 +287,7 @@
       // - 2026-11-10 第四轮：再放宽 matchTime 到 20000、resetMatch 改
       //   "activity"、actionMaximum 改 3，以覆盖「进入 App 几秒后才弹」的广告。
       // 当前生效值一律以本组下方字段为准：
-      //   matchTime 20000 / actionMaximum 3 / resetMatch "activity" / actionCd 2500。
+      //   matchTime 60000 / actionMaximum 6 / resetMatch "activity" / actionCd 2500。
       // ⚠️ 白名单含 .mvi.home.HomeActivity：首页浮层若不消费返回键，
       //    按返回键可能退出首页（只影响当前页面，不影响计时/轨迹/成绩）。
       //    若实测发现误退出，在 GKD 界面里单独关掉本组即可，无需改文件。
@@ -284,7 +307,7 @@
       //    全部漏掉。改用包含匹配并补入京东互动引导语；本组 action 是 back
       //    而不是 click，命中广告素材文案不会点开落地页。
       // ④ 唯一显式排除 SplashActivity：它是启动入口，按返回键会直接退出 App。
-      "matchTime": 20000,
+      "matchTime": 60000,
       "resetMatch": "activity",
       "excludeActivityIds": [
         ".mvi.splash.SplashActivity"
@@ -318,8 +341,13 @@
         "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
         "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity"
       ],
+      // 2026-11-13 第八轮：dex 实证广告按队列轮播（showMaxCacheAds /
+      // adCache / NextAd / adQueue / 「即将播放下一条广告」），同一个
+      // HomeActivity 内会连出多条广告。原 20 秒窗口与 3 次上限在第 4 条
+      // 起休眠；放宽到 60 秒 / 6 次，actionCd 2500 与 back 动作不变，
+      // 仍有硬上限且 actionCd < matchTime，避免首页被无限按返回键退出。
       "actionCd": 2500,
-      "actionMaximum": 3,
+      "actionMaximum": 6,
       "rules": [
         {
           // 包含匹配而非精确匹配：京东互动插屏的标签常写成「摇一摇查看广告」
