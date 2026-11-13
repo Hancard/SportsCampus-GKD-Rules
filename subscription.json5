@@ -26,7 +26,7 @@
 {
   "id": 248879535,
   "name": "运动世界校园 7.3.93 补充规则",
-  "version": 10,
+  "version": 11,
   "author": "Hancard",
   "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
   "categories": [],
@@ -83,6 +83,8 @@
             ".mvi.splash.SystemUpgradeActivity"
           ],
           "fastQuery": true,
+          "matchRoot": true,
+          "forcedTime": 10000,
           "matchTime": 60000,
           "actionMaximum": 4,
           "resetMatch": "activity",
@@ -96,7 +98,125 @@
         },
         {
           "key": 101,
-          "name": "全屏/插屏广告-关闭按钮（限广告容器）",
+          "name": "全屏/插屏广告-关闭按钮（vid 精确匹配，全 Activity）",
+          "excludeActivityIds": [
+            ".mvi.run",
+            ".mvi.sport",
+            ".mvi.indoor",
+            ".mvi.ai",
+            ".mvi.exam",
+            ".mvi.course",
+            ".mvi.home.plan",
+            ".mvi.home.SportProgressActivity",
+            ".activity.RunPlanActivity",
+            ".hybrid.ui",
+            ".mvi.tice",
+            ".mvi.teachplan",
+            ".mvi.roll",
+            ".mvi.extra",
+            ".mvi.appeal",
+            ".mvi.survey",
+            ".mvi.competition",
+            ".mvi.notice",
+            ".mvi.dynamic",
+            ".mvi.me",
+            ".mvi.setting",
+            ".mvi.choose",
+            ".mvi.register",
+            ".mvi.login",
+            ".mvi.tourist",
+            ".mvi.wearable",
+            ".activity.mine",
+            ".mvi.home.InterestLabelActivity",
+            ".mvi.home.RankingListActivity",
+            ".mvi.home.rank",
+            ".mvi.CustomWebViewActivity",
+            ".mvi.WebViewActivity",
+            ".mvi.WebViewGameActivity",
+            ".mvi.VideoPlayActivity",
+            ".mvi.FileReaderActivity",
+            ".mvi.ImageViewerActivity",
+            ".mvi.MultiImageSelectorActivity",
+            ".hybrid.demo",
+            ".utils.qrcode",
+            ".wxapi",
+            ".mvi.splash.SystemUpgradeActivity"
+          ],
+          "fastQuery": true,
+          "matchRoot": true,
+          "forcedTime": 10000,
+          "actionCd": 1500,
+          "rules": [
+            {
+              "key": 0,
+              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"over_ad_close\" || vid=\"lp_webview_iv_close\" || vid=\"baidu_wp_close\" || vid=\"jad_interstitial_close\" || vid=\"jad_banner_close\" || vid=\"jad_feed_close\" || vid=\"jad_splash_skip_btn\" || vid=\"jd_close\" || vid=\"jd_lijin_close\" || vid=\"jdwm_close\" || vid=\"tianmu_suspend_iv_close\" || vid=\"tianmu_iv_close\" || vid=\"tianmu_tv_close\" || vid=\"tianmu_banner_iv_close\" || vid=\"tianmu_widget_iv_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"adgain_interstitial_close_text\" || vid=\"adgain_splash_skip_text\" || vid=\"ksad_interstitial_close_outer\" || vid=\"ksad_interstitial_auto_close\" || vid=\"ksad_close_btn\" || vid=\"ksad_right_close\" || vid=\"ksad_ad_endcard_close_root\" || vid=\"ksad_detail_close_btn\" || vid=\"ksad_splash_endcard_close_img\" || vid=\"ksad_auto_close_btn\" || vid=\"mimo_interstitial_close_img\" || vid=\"mimo_template_close_img\" || vid=\"mimo_interstitial_skip\" || vid=\"hiad_banner_close_button\" || vid=\"hiad_btn_skip\" || vid=\"iv_jd_home_smile_close\" || vid=\"iv_jd_smill_close\" || vid=\"iv_jdwm_smile_close\" || vid=\"jad_video_skip_btn\" || vid=\"mimo_interstitial_endpage_close_img\" || vid=\"iv_custom_smile_close\" || vid=\"iv_didi_close\" || vid=\"iv_eleme_smile_close\" || vid=\"iv_fz_smile_close\" || vid=\"iv_idlefish_smile_close\" || vid=\"iv_ks_smile_close\" || vid=\"iv_meituan_smile_close\" || vid=\"iv_mt_hotel_smile_close\" || vid=\"iv_mt_shop_smile_close\" || vid=\"iv_mt_xh_smile_close\" || vid=\"iv_mt_yy_smile_close\" || vid=\"iv_no_show_smill_close\" || vid=\"iv_shangou_smile_close\" || vid=\"iv_smill_close\" || vid=\"iv_tb_home_smile_close\" || vid=\"iv_wph_smile_close\" || vid=\"kfc_wp_close\" || vid=\"adgain_interstitial_skip_ll\" || vid=\"adgain_interstitial_skip_text\" || vid=\"adgain_splash_skip_ll\" || vid=\"adgain_splash_skip_new_view\" || vid=\"hiad_skip_text\" || vid=\"ksad_auto_close_text\" || vid=\"ksad_banner_item_close\" || vid=\"ksad_card_close\" || vid=\"ksad_end_close_btn\" || vid=\"ksad_live_end_page_close_btn\" || vid=\"ksad_skip_view_skip\" || vid=\"ksad_splash_circle_skip_left_view\" || vid=\"ksad_splash_circle_skip_right_view\" || vid=\"ksad_splash_skip_left_view\" || vid=\"ksad_splash_skip_right_view\" || vid=\"ksad_web_tip_close_btn\" || vid=\"mimo_banner_view_close\" || vid=\"tianmu_library_close_tv\" || vid=\"tianmu_library_iv_close\" || vid=\"tianmu_library_iv_close_inside\" || vid=\"tianmu_library_iv_skip\" || vid=\"tianmu_widget_tv_skip\"][visibleToUser=true]"
+            }
+          ]
+        },
+        {
+          "key": 102,
+          "name": "广告标签-返回键兜底（全 Activity）",
+          "matchRoot": true,
+          "forcedTime": 10000,
+          "matchTime": 60000,
+          "resetMatch": "activity",
+          "excludeActivityIds": [
+            ".mvi.run",
+            ".mvi.sport",
+            ".mvi.indoor",
+            ".mvi.ai",
+            ".mvi.exam",
+            ".mvi.course",
+            ".mvi.home.plan",
+            ".mvi.home.SportProgressActivity",
+            ".activity.RunPlanActivity",
+            ".hybrid.ui",
+            ".mvi.tice",
+            ".mvi.teachplan",
+            ".mvi.roll",
+            ".mvi.extra",
+            ".mvi.appeal",
+            ".mvi.survey",
+            ".mvi.competition",
+            ".mvi.notice",
+            ".mvi.dynamic",
+            ".mvi.me",
+            ".mvi.setting",
+            ".mvi.choose",
+            ".mvi.register",
+            ".mvi.login",
+            ".mvi.tourist",
+            ".mvi.wearable",
+            ".activity.mine",
+            ".mvi.home.InterestLabelActivity",
+            ".mvi.home.RankingListActivity",
+            ".mvi.home.rank",
+            ".mvi.CustomWebViewActivity",
+            ".mvi.WebViewActivity",
+            ".mvi.WebViewGameActivity",
+            ".mvi.VideoPlayActivity",
+            ".mvi.FileReaderActivity",
+            ".mvi.ImageViewerActivity",
+            ".mvi.MultiImageSelectorActivity",
+            ".hybrid.demo",
+            ".utils.qrcode",
+            ".wxapi",
+            ".mvi.splash.SystemUpgradeActivity",
+            ".mvi.splash.SplashActivity"
+          ],
+          "actionCd": 2500,
+          "actionMaximum": 6,
+          "rules": [
+            {
+              "key": 0,
+              "action": "back",
+              "matches": "[text*=\"广告\" || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\" || text*=\"滑动查看详情\" || text*=\"立即领取\"][visibleToUser=true]"
+            }
+          ]
+        },
+        {
+          "key": 103,
+          "name": "关闭文案兜底（限广告容器）",
           "activityIds": [
             ".mvi.splash.SplashActivity",
             ".mvi.splash.AdActivity",
@@ -121,56 +241,25 @@
             "com.baidu.mobads.sdk.api.BdShellActivity",
             "com.bytedance.msdk.api.activity.TTTransparentActivity",
             "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
-            "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity"
+            "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity",
+            ".kwad.KwadHandlerActivity",
+            "com.kwad.auth.login.KwadRouteHandlerActivity",
+            "com.kwad.sdk.api.proxy.app.BaseFragmentActivity$",
+            "com.huawei.openalliance.ad.activity.",
+            "com.acse.ottn.activity.",
+            "com.byted.live.lite.Activity_",
+            "com.bytedance.android.openliveplugin.stub.activity.StubActivity$",
+            "com.bytedance.sdk.openadsdk.core.activity.base.TT",
+            "com.yfanads.android.core.FeedbackProxyActivity",
+            "com.yfanads.android.qapp.DummyActivity"
           ],
+          "matchRoot": true,
+          "forcedTime": 10000,
           "actionCd": 1500,
           "rules": [
             {
               "key": 0,
-              "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"over_ad_close\" || vid=\"lp_webview_iv_close\" || vid=\"baidu_wp_close\" || vid=\"jad_interstitial_close\" || vid=\"jad_banner_close\" || vid=\"jad_feed_close\" || vid=\"jad_splash_skip_btn\" || vid=\"jd_close\" || vid=\"jd_lijin_close\" || vid=\"jdwm_close\" || vid=\"tianmu_suspend_iv_close\" || vid=\"tianmu_iv_close\" || vid=\"tianmu_tv_close\" || vid=\"tianmu_banner_iv_close\" || vid=\"tianmu_widget_iv_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"adgain_interstitial_close_text\" || vid=\"adgain_splash_skip_text\" || vid=\"ksad_interstitial_close_outer\" || vid=\"ksad_interstitial_auto_close\" || vid=\"ksad_close_btn\" || vid=\"ksad_right_close\" || vid=\"ksad_ad_endcard_close_root\" || vid=\"ksad_detail_close_btn\" || vid=\"ksad_splash_endcard_close_img\" || vid=\"ksad_auto_close_btn\" || vid=\"mimo_interstitial_close_img\" || vid=\"mimo_template_close_img\" || vid=\"mimo_interstitial_skip\" || vid=\"hiad_banner_close_button\" || vid=\"hiad_btn_skip\" || vid=\"iv_jd_home_smile_close\" || vid=\"iv_jd_smill_close\" || vid=\"iv_jdwm_smile_close\" || vid=\"jad_video_skip_btn\" || vid=\"mimo_interstitial_endpage_close_img\" || vid=\"iv_custom_smile_close\" || vid=\"iv_didi_close\" || vid=\"iv_eleme_smile_close\" || vid=\"iv_fz_smile_close\" || vid=\"iv_idlefish_smile_close\" || vid=\"iv_ks_smile_close\" || vid=\"iv_meituan_smile_close\" || vid=\"iv_mt_hotel_smile_close\" || vid=\"iv_mt_shop_smile_close\" || vid=\"iv_mt_xh_smile_close\" || vid=\"iv_mt_yy_smile_close\" || vid=\"iv_no_show_smill_close\" || vid=\"iv_shangou_smile_close\" || vid=\"iv_smill_close\" || vid=\"iv_tb_home_smile_close\" || vid=\"iv_wph_smile_close\" || vid=\"kfc_wp_close\" || vid=\"adgain_interstitial_skip_ll\" || vid=\"adgain_interstitial_skip_text\" || vid=\"adgain_splash_skip_ll\" || vid=\"adgain_splash_skip_new_view\" || vid=\"hiad_skip_text\" || vid=\"ksad_auto_close_text\" || vid=\"ksad_banner_item_close\" || vid=\"ksad_card_close\" || vid=\"ksad_end_close_btn\" || vid=\"ksad_live_end_page_close_btn\" || vid=\"ksad_skip_view_skip\" || vid=\"ksad_splash_circle_skip_left_view\" || vid=\"ksad_splash_circle_skip_right_view\" || vid=\"ksad_splash_skip_left_view\" || vid=\"ksad_splash_skip_right_view\" || vid=\"ksad_web_tip_close_btn\" || vid=\"mimo_banner_view_close\" || vid=\"tianmu_library_close_tv\" || vid=\"tianmu_library_iv_close\" || vid=\"tianmu_library_iv_close_inside\" || vid=\"tianmu_library_iv_skip\" || vid=\"tianmu_widget_tv_skip\" || desc*=\"关闭\" || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
-            }
-          ]
-        },
-        {
-          "key": 102,
-          "name": "广告标签-返回键兜底",
-          "matchTime": 60000,
-          "resetMatch": "activity",
-          "excludeActivityIds": [
-            ".mvi.splash.SplashActivity"
-          ],
-          "activityIds": [
-            ".mvi.splash.AdActivity",
-            ".mvi.home.HomeActivity",
-            "com.yfanads.android.core.act.YFInterstitialActivity",
-            "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
-            "com.yfanads.android.adx.core.TransparentActivity",
-            "com.yfanads.android.adx.core.DialogProxyActivity",
-            "com.yfanads.android.adx.webview.AdxWebViewActivity",
-            "com.qq.e.ads.ADActivity",
-            "com.qq.e.ads.PortraitADActivity",
-            "com.qq.e.ads.LandscapeADActivity",
-            "com.qq.e.ads.DialogActivity",
-            "com.byazt.cef.Stub_",
-            "com.kwad.sdk.api.proxy.app.AdWebViewActivity",
-            "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
-            "com.jd.ad.sdk.bl.adinteraction.deeplink.JADWebViewActivity",
-            "com.tianmu.biz.activity.InterstitialActivity",
-            "com.tianmu.biz.activity.LandscapeInterstitialActivity",
-            "com.adgain.sdk.base.activity.AdActivity",
-            "com.baidu.mobads.sdk.api.AppActivity",
-            "com.baidu.mobads.sdk.api.BdShellActivity",
-            "com.bytedance.msdk.api.activity.TTTransparentActivity",
-            "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
-            "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity"
-          ],
-          "actionCd": 2500,
-          "actionMaximum": 6,
-          "rules": [
-            {
-              "key": 0,
-              "action": "back",
-              "matches": "[text*=\"广告\" || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\" || text*=\"滑动查看详情\" || text*=\"立即领取\"][visibleToUser=true]"
+              "matches": "[desc*=\"关闭\" || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
             }
           ]
         }

@@ -2,18 +2,47 @@
 // 运动世界校园 7.3.93 (com.zjwh.android_wh_physicalfitness) —— GKD 本地应用规则
 //
 // 导入：GKD → 订阅 → 本地订阅 → 应用规则 → + ，整段粘贴
-// 用途：补齐广告页的关闭按钮，以及开屏「跳过」文本兜底。
+// 用途：补齐广告页关闭按钮、开屏「跳过」兜底与返回键兜底。
 // 前提：安装 GKD 并开启无障碍；建议同时导入续更订阅
 //       Lin-arm/GKD_subscription，并关闭其 key 13 / 14 / 15（见 README.md）。
-// 说明：若订阅已能跳掉全部广告，不必导入本文件，避免两个规则源重复点击。
-// 回退：关闭本规则组，或关掉 GKD 无障碍开关。
+// 二选一：远程订阅与本地粘贴只启用一个，同时启用会重复点击。
+// 回退：关闭对应规则组，或关掉 GKD 无障碍开关。
 //
-// 组件名与资源 ID 均对照 7.3.93 完整 AndroidManifest.xml（330 个 activity）
+// 组件名与资源 ID 均对照 7.3.93 完整 AndroidManifest.xml（330 个组件）
 // 与 resources.arsc 核实。activityIds / excludeActivityIds 是 startWith 匹配；
-// 以 "." 开头会自动补全为 appId + 该字符串。
+// 以 "." 开头会自动补全为 appId + 该字符串；exclude 优先级高于 activityIds。
 //
 // 红线：不接触跑步计时、轨迹、成绩与定位页面；不用硬编码屏幕坐标；不用跨应用
-//       全局规则；返回键兜底组只在广告容器白名单内生效且严格限流。
+//       全局规则；不收激励视频/奖励页；不以猜坐标或尺寸代替真实节点。
+//
+// === 第九轮重修（version 11，2026-11-13）===
+// 真机连续反馈「还是不行」后，回到静态证据与官方文档复核，确认前八轮一直在
+// 做「补 vid / 放宽窗口」，却漏了三个结构性根因：
+//  ① 白名单从结构上挡住了插屏。完整 manifest 330 个组件，旧白名单只覆盖 30 个；
+//    136 个第三方广告/桥接容器在白名单外（华为 ads 8、快手 47、穿山甲 live 24、
+//    acse.ottn 7…）。dex 里 PopupWindow x181 / DialogFragment x173 / WindowManager
+//    x43 / addView x38，且京东插屏 JADInterstitial 在 manifest 中根本没有独立
+//    Activity —— 它就是叠在宿主 Activity 上的浮层。开屏组 100 没有白名单所以
+//    能拦，组 101/102 被白名单挡住，正好解释了「开屏能拦、几秒后弹窗拦不住」。
+//  ② matchRoot。官方 RawCommonProps：GKD 默认从「无障碍事件节点」向下匹配；
+//    弹窗里每秒变化的倒计时 TextView 会一直作为事件节点，关闭按钮不在它的子树，
+//    「即使你能在网页审查工具查询到这个节点」也匹配失败。所有组改 matchRoot:true。
+//  ③ forcedTime。官方 RawCommonProps：flutter/webview 页面变化不发
+//    onAccessibilityEvent 时，只能主动轮询。本 APK 有 libflutter.so、
+//    flutterEmbedding=2，广告又大量走 WebView。所有组加 forcedTime:10000。
+//  另：官方 optimize#rule-format 规定 fastQuery 只接受 id/vid/text，混入
+//    desc 分支会让整条 || 表达式停用快速查询。现将 vid 与泛化信号拆成组 101/103，
+//    组 101 启用 fastQuery:true，78 个 vid 全部合规。
+//
+// === 必须保持的不变量（第六轮变异测试 + 第九轮结构回归）===
+//  · 组 101 不得加 matchTime / actionMaximum / resetMatch：它常驻任意 Activity，
+//    加窗口会重现「首页弹窗在任意时刻出现却拦不住」。
+//  · 组 101 必须保留 actionCd 1500 与选择器末尾 [visibleToUser=true]。
+//  · 组 101 不得混入 desc 分支，否则 fastQuery 整体失效。
+//  · 组 101/102 不得重新引入 activityIds 白名单（本轮根因）。
+//  · 组 100/101/102 的 excludeActivityIds 必须覆盖全部自有业务页面。
+//  · 组 103 不得加 text*="跳过"（与组 100 必然连点开屏按钮）。
+//  · 所有组必须保留 matchRoot:true。
 // ============================================================================
 
 {
@@ -23,24 +52,10 @@
     {
       "key": 100,
       "name": "开屏广告-跳过按钮兜底",
-      // 社区常用的开屏跳过选择器，限定在本 App 内。
-      // 60 秒匹配窗口 + 每次 Activity 刷新最多点 4 次（开屏 1 次 + 首页弹窗
-      // 与队列轮播的后续广告），防止在首页反复误点；详见下方 matchTime 处的
-      // 第四轮 / 第八轮时序说明。
-      // 本组没有 activityIds 白名单（否则会漏掉开屏宿主），所以用
-      // excludeActivityIds 黑名单挡住所有业务页面 —— 这些页面可能出现「跳过」
-      // 字样，但绝不能被自动点击。
-      //
-      // 2026-11-10 第三轮红线加固：原来只有 10 个前缀，只盖住本包 140 个
-      // 自有 Activity 中的 36 个。按完整 manifest 逐路径反查后补到 41 个，
-      // 覆盖 136/140；剩下没排除的 4 个恰好是必须保留的广告链路：
-      //   .mvi.splash.SplashActivity / .mvi.splash.AdActivity（开屏）
-      //   .mvi.home.HomeActivity（首页弹窗）
-      //   .kwad.KwadHandlerActivity（快手广告桥接，刻意不排除以免漏跳过）
-      // 每个前缀都用脚本确认在 manifest 中至少命中一个真实 Activity（startWith）。
-      // 刻意排除的还有 .mvi.splash.SystemUpgradeActivity（版本升级弹窗，非广告）。
+      // 无 activityIds 白名单：开屏宿主不能被白名单挡住。改用业务页黑名单，
+      // 41 个前缀覆盖 136/140 个自有 Activity，剩下的 4 个正是广告宿主
+      // （Splash / Ad / Home / KwadHandler）。
       "excludeActivityIds": [
-        // --- 核心红线：跑步 / 成绩 / 考试 / 定位 / 课程 ---
         ".mvi.run",
         ".mvi.sport",
         ".mvi.indoor",
@@ -51,7 +66,6 @@
         ".mvi.home.SportProgressActivity",
         ".activity.RunPlanActivity",
         ".hybrid.ui",
-        // --- 体测 / 教学 / 考勤 / 加分 / 申诉 / 问卷 / 竞赛 ---
         ".mvi.tice",
         ".mvi.teachplan",
         ".mvi.roll",
@@ -61,7 +75,6 @@
         ".mvi.competition",
         ".mvi.notice",
         ".mvi.dynamic",
-        // --- 个人中心 / 设置 / 选课 / 登录注册 / 其他业务页 ---
         ".mvi.me",
         ".mvi.setting",
         ".mvi.choose",
@@ -73,7 +86,6 @@
         ".mvi.home.InterestLabelActivity",
         ".mvi.home.RankingListActivity",
         ".mvi.home.rank",
-        // --- 内容查看器 / H5 / 分享支付 ---
         ".mvi.CustomWebViewActivity",
         ".mvi.WebViewActivity",
         ".mvi.WebViewGameActivity",
@@ -84,36 +96,19 @@
         ".hybrid.demo",
         ".utils.qrcode",
         ".wxapi",
-        // --- 系统升级弹窗（非广告，不应自动点「跳过」）---
         ".mvi.splash.SystemUpgradeActivity"
       ],
       "fastQuery": true,
-      // 2026-11-10 第四轮（真机反馈：开屏 / 固定式能拦，几秒后弹窗拦不住）：
-      // 官方 RawCommonProps 明确「actionMaximum 达到最大次数时休眠此规则」，
-      // 而 resetMatch:"app" 只在「重新进入 app」时重置。开屏点过一次「跳过」
-      // 后，同一次会话里本组一直休眠；但服务端把开屏与首页弹窗配成两个独立
-      // 广告位 —— dex 中 indexScreen / index_screen、returnIndexScreen、
-      // expiredOpenScreen 各自独立，后者在开屏之后几秒才弹出，正好落在休眠期。
-      // 改为官方默认的 resetMatch:"activity"：SplashActivity → HomeActivity
-      // 切换时重置；matchTime 放宽到 20 秒覆盖延迟弹窗；actionMaximum 2 允许
-      // 开屏与弹窗各点一次；actionCd 1500 防止同一广告内连点。
+      // 从根节点开始匹配：倒计时文本节点变化时关闭按钮仍能被找到。
+      "matchRoot": true,
+      // Flutter / WebView 不发无障碍事件时主动轮询 10 秒。
+      "forcedTime": 10000,
+      // 队列轮播（dex: showMaxCacheAds / adCache / NextAd / adQueue）同一次
+      // Activity 内会连出多条广告，故 60 秒窗口 + 4 次上限；actionCd < matchTime。
       "matchTime": 60000,
       "actionMaximum": 4,
       "resetMatch": "activity",
       "actionCd": 1500,
-      // 2026-11-13 第八轮（真机截图 toast「即将播放下一条广告」）：dex 中
-      // showMaxCacheAds x10 / adCache x27 / NextAd x8 / adQueue x3，且中文
-      // 字面量「即将播放下一条广告」实证存在 —— 预加载的多条广告会排成队列，
-      // 在同一个 Activity 内连续播放。轮播不切换 Activity，
-      // resetMatch:"activity" 不重置；原 actionMaximum:2 + matchTime:20000
-      // 在第 3 条广告起就休眠、20 秒后整窗过期。放宽到 4 次 / 60 秒，
-      // actionCd 1500 与黑名单不变，仍有硬上限且 actionCd < matchTime。
-      // 2026-11-11 第五轮：本组按 text*="跳过" 全局匹配，与组 101 白名单里的
-      // skip 类 vid 是「职责互补」而非「节点互斥」。同一跳过按钮若同时带文本
-      // 与资源 ID，可能被两组各点一次，已写入 README 排障表。当前刻意不移除
-      // 组 101 的 skip 类 vid：部分 SDK 的跳过按钮只暴露 vid 而没有文本，
-      // 删掉会漏拦。fastQuery:true 经官方 optimize#rule-format 复核有效 ——
-      // 首个属性表达式 text*="跳过" 属于允许的 [text*='abc'] 格式。
       "rules": [
         {
           "key": 0,
@@ -123,21 +118,142 @@
     },
     {
       "key": 101,
-      "name": "全屏/插屏广告-关闭按钮（限广告容器）",
-      // 下面组件名均来自本包 AndroidManifest 静态解析。
-      // SplashActivity / HomeActivity 是开屏与首页弹窗广告的宿主（业务页面，
-      // 不是纯广告页），其余为各广告 SDK 的容器。
-      // 不含激励视频/奖励页，不含任何跑步、成绩、定位页面。
-      // 本包 Pangle 壳是 com.byazt.cef.Stub_*（7 个），不是标准的
-      // com.bytedance.sdk.openadsdk.stub.activity.* —— 后者在本包中不存在。
-      // 京东 JAD / 天目 / AdGain 的插屏与透明容器在白名单中。
-      // 2026-11-09 真机截图反馈：首页「京东 JD 60 元券 / 上滑查看详情」的
-      // 互动插屏广告（对应 assets/jad_slideup.json）由京东 SDK 承载，
-      // 其关闭按钮 vid 是 jad_interstitial_close / jd_lijin_close。
-      // 2026-11-10 第三轮：对照完整 manifest 的 330 个 activity 反查，补入
-      // 5 个确属广告、且此前完全没进白名单的容器（百度 MobAds / 穿山甲
-      // MSDK 与 TTDelegate / 快手全屏插屏）。刻意排除所有 *Reward* 激励视频、
-      // 广告落地页 WebView、以及任何 mvi/run、mvi/sport 业务页面。
+      "name": "全屏/插屏广告-关闭按钮（vid 精确匹配，全 Activity）",
+      // 第九轮：删除旧 activityIds 白名单。78 个 vid 都是广告 SDK 专属资源名，
+      // 用与组 100 相同的业务黑名单即可安全地在任意宿主 Activity 上生效；
+      // 弹窗以 PopupWindow / DialogFragment 浮层形式叠加时也不会再被漏掉。
+      "excludeActivityIds": [
+        ".mvi.run",
+        ".mvi.sport",
+        ".mvi.indoor",
+        ".mvi.ai",
+        ".mvi.exam",
+        ".mvi.course",
+        ".mvi.home.plan",
+        ".mvi.home.SportProgressActivity",
+        ".activity.RunPlanActivity",
+        ".hybrid.ui",
+        ".mvi.tice",
+        ".mvi.teachplan",
+        ".mvi.roll",
+        ".mvi.extra",
+        ".mvi.appeal",
+        ".mvi.survey",
+        ".mvi.competition",
+        ".mvi.notice",
+        ".mvi.dynamic",
+        ".mvi.me",
+        ".mvi.setting",
+        ".mvi.choose",
+        ".mvi.register",
+        ".mvi.login",
+        ".mvi.tourist",
+        ".mvi.wearable",
+        ".activity.mine",
+        ".mvi.home.InterestLabelActivity",
+        ".mvi.home.RankingListActivity",
+        ".mvi.home.rank",
+        ".mvi.CustomWebViewActivity",
+        ".mvi.WebViewActivity",
+        ".mvi.WebViewGameActivity",
+        ".mvi.VideoPlayActivity",
+        ".mvi.FileReaderActivity",
+        ".mvi.ImageViewerActivity",
+        ".mvi.MultiImageSelectorActivity",
+        ".hybrid.demo",
+        ".utils.qrcode",
+        ".wxapi",
+        ".mvi.splash.SystemUpgradeActivity"
+      ],
+      "fastQuery": true,
+      "matchRoot": true,
+      "forcedTime": 10000,
+      "actionCd": 1500,
+      // 78 个 vid 逐个核对为 resources.arsc 中 type=id 的真实资源名；
+      // 不收 *_reward_*、ad_close_*_area 与业务页通用名 btn_close / tv_close。
+      // 纯 vid 分支全部符合官方 fastQuery 规定格式。
+      "rules": [
+        {
+          "key": 0,
+          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"over_ad_close\" || vid=\"lp_webview_iv_close\" || vid=\"baidu_wp_close\" || vid=\"jad_interstitial_close\" || vid=\"jad_banner_close\" || vid=\"jad_feed_close\" || vid=\"jad_splash_skip_btn\" || vid=\"jd_close\" || vid=\"jd_lijin_close\" || vid=\"jdwm_close\" || vid=\"tianmu_suspend_iv_close\" || vid=\"tianmu_iv_close\" || vid=\"tianmu_tv_close\" || vid=\"tianmu_banner_iv_close\" || vid=\"tianmu_widget_iv_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"adgain_interstitial_close_text\" || vid=\"adgain_splash_skip_text\" || vid=\"ksad_interstitial_close_outer\" || vid=\"ksad_interstitial_auto_close\" || vid=\"ksad_close_btn\" || vid=\"ksad_right_close\" || vid=\"ksad_ad_endcard_close_root\" || vid=\"ksad_detail_close_btn\" || vid=\"ksad_splash_endcard_close_img\" || vid=\"ksad_auto_close_btn\" || vid=\"mimo_interstitial_close_img\" || vid=\"mimo_template_close_img\" || vid=\"mimo_interstitial_skip\" || vid=\"hiad_banner_close_button\" || vid=\"hiad_btn_skip\" || vid=\"iv_jd_home_smile_close\" || vid=\"iv_jd_smill_close\" || vid=\"iv_jdwm_smile_close\" || vid=\"jad_video_skip_btn\" || vid=\"mimo_interstitial_endpage_close_img\" || vid=\"iv_custom_smile_close\" || vid=\"iv_didi_close\" || vid=\"iv_eleme_smile_close\" || vid=\"iv_fz_smile_close\" || vid=\"iv_idlefish_smile_close\" || vid=\"iv_ks_smile_close\" || vid=\"iv_meituan_smile_close\" || vid=\"iv_mt_hotel_smile_close\" || vid=\"iv_mt_shop_smile_close\" || vid=\"iv_mt_xh_smile_close\" || vid=\"iv_mt_yy_smile_close\" || vid=\"iv_no_show_smill_close\" || vid=\"iv_shangou_smile_close\" || vid=\"iv_smill_close\" || vid=\"iv_tb_home_smile_close\" || vid=\"iv_wph_smile_close\" || vid=\"kfc_wp_close\" || vid=\"adgain_interstitial_skip_ll\" || vid=\"adgain_interstitial_skip_text\" || vid=\"adgain_splash_skip_ll\" || vid=\"adgain_splash_skip_new_view\" || vid=\"hiad_skip_text\" || vid=\"ksad_auto_close_text\" || vid=\"ksad_banner_item_close\" || vid=\"ksad_card_close\" || vid=\"ksad_end_close_btn\" || vid=\"ksad_live_end_page_close_btn\" || vid=\"ksad_skip_view_skip\" || vid=\"ksad_splash_circle_skip_left_view\" || vid=\"ksad_splash_circle_skip_right_view\" || vid=\"ksad_splash_skip_left_view\" || vid=\"ksad_splash_skip_right_view\" || vid=\"ksad_web_tip_close_btn\" || vid=\"mimo_banner_view_close\" || vid=\"tianmu_library_close_tv\" || vid=\"tianmu_library_iv_close\" || vid=\"tianmu_library_iv_close_inside\" || vid=\"tianmu_library_iv_skip\" || vid=\"tianmu_widget_tv_skip\"][visibleToUser=true]"
+        }
+      ]
+    },
+    {
+      "key": 102,
+      "name": "广告标签-返回键兜底（全 Activity）",
+      // 关闭按钮读不到节点时按返回键。同样改为黑名单，避免浮层宿主不在白名单。
+      // 触发条件仍要求屏幕上出现广告标签/互动引导语，action 是 back 而非 click，
+      // 命中广告素材文案不会点开落地页；60 秒 / 6 次硬上限防止首页被反复退出。
+      "matchRoot": true,
+      "forcedTime": 10000,
+      "matchTime": 60000,
+      "resetMatch": "activity",
+      // 业务黑名单 + 启动入口（返回键退出 App）。
+      "excludeActivityIds": [
+        ".mvi.run",
+        ".mvi.sport",
+        ".mvi.indoor",
+        ".mvi.ai",
+        ".mvi.exam",
+        ".mvi.course",
+        ".mvi.home.plan",
+        ".mvi.home.SportProgressActivity",
+        ".activity.RunPlanActivity",
+        ".hybrid.ui",
+        ".mvi.tice",
+        ".mvi.teachplan",
+        ".mvi.roll",
+        ".mvi.extra",
+        ".mvi.appeal",
+        ".mvi.survey",
+        ".mvi.competition",
+        ".mvi.notice",
+        ".mvi.dynamic",
+        ".mvi.me",
+        ".mvi.setting",
+        ".mvi.choose",
+        ".mvi.register",
+        ".mvi.login",
+        ".mvi.tourist",
+        ".mvi.wearable",
+        ".activity.mine",
+        ".mvi.home.InterestLabelActivity",
+        ".mvi.home.RankingListActivity",
+        ".mvi.home.rank",
+        ".mvi.CustomWebViewActivity",
+        ".mvi.WebViewActivity",
+        ".mvi.WebViewGameActivity",
+        ".mvi.VideoPlayActivity",
+        ".mvi.FileReaderActivity",
+        ".mvi.ImageViewerActivity",
+        ".mvi.MultiImageSelectorActivity",
+        ".hybrid.demo",
+        ".utils.qrcode",
+        ".wxapi",
+        ".mvi.splash.SystemUpgradeActivity",
+        ".mvi.splash.SplashActivity"
+      ],
+      "actionCd": 2500,
+      "actionMaximum": 6,
+      "rules": [
+        {
+          "key": 0,
+          "action": "back",
+          "matches": "[text*=\"广告\" || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\" || text*=\"滑动查看详情\" || text*=\"立即领取\"][visibleToUser=true]"
+        }
+      ]
+    },
+    {
+      "key": 103,
+      "name": "关闭文案兜底（限广告容器）",
+      // 第九轮从组 101 拆出的泛化信号：contentDescription 含「关闭」、短文案
+      // 「N秒 | 关闭」与 5 种叉号变体。这些信号在业务页面也可能出现，因此本组
+      // 保留广告容器白名单，不能像组 101 那样全 Activity 生效。
+      // 白名单在旧 24 项基础上补齐第九轮反查漏掉的整族容器前缀：快手
+      // BaseFragmentActivity$、华为 openalliance.ad.activity.、穿山甲 live
+      // Activity_、acse.ottn 浮层、openliveplugin StubActivity$、KwadHandler。
+      // 刻意不含任何 *reward* 激励视频、广告落地页与下载代理。
       "activityIds": [
         ".mvi.splash.SplashActivity",
         ".mvi.splash.AdActivity",
@@ -162,201 +278,27 @@
         "com.baidu.mobads.sdk.api.BdShellActivity",
         "com.bytedance.msdk.api.activity.TTTransparentActivity",
         "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
-        "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity"
+        "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity",
+        ".kwad.KwadHandlerActivity",
+        "com.kwad.auth.login.KwadRouteHandlerActivity",
+        "com.kwad.sdk.api.proxy.app.BaseFragmentActivity$",
+        "com.huawei.openalliance.ad.activity.",
+        "com.acse.ottn.activity.",
+        "com.byted.live.lite.Activity_",
+        "com.bytedance.android.openliveplugin.stub.activity.StubActivity$",
+        "com.bytedance.sdk.openadsdk.core.activity.base.TT",
+        "com.yfanads.android.core.FeedbackProxyActivity",
+        "com.yfanads.android.qapp.DummyActivity"
       ],
+      "matchRoot": true,
+      "forcedTime": 10000,
       "actionCd": 1500,
+      // 不加 matchTime / actionMaximum / resetMatch：弹窗随时可能出现。
+      // desc 分支不符合 fastQuery 规定格式，本组刻意不开 fastQuery。
       "rules": [
         {
-          // 单条规则同时覆盖「按 vid 匹配」与「按 contentDescription 兜底」。
-          // 2026-11-10 修复：此前拆成 key 0 / key 1 两条 rule，一个关闭按钮若
-          // 同时有 vid 和 desc 含「关闭」，两条 rule 会各点一次 —— 连点两下，
-          // 第二次坐标可能已经落在广告素材上，反而打开落地页。合并后不可能重复触发。
-          //
-          // 这里刻意不写 fastQuery：官方 optimize#rule-format 规定快速查询只接受
-          // id/vid/text 系列作为 || 分支，desc*="关闭" 不符合；「只要有一个分支
-          // 不符合, 整个 || 表达式就必须停用全局快速查询」。此前 key 1 上的
-          // fastQuery:true 因此完全无效（官方：不满足格式时开不开都不影响查询
-          // 复杂度），是误导性配置。正确性优先，保留全树遍历。
-          //
-          // 78 个 vid 均用 _probe/62_arsc_idtype.py 核实为本包 resources.arsc 中
-          // type=id 的真实资源名（4865 个 id 里逐个查得）。2026-11-10 第四轮之二：
-          // 反查全部 60 个 close/skip 类 type=id 名，发现京东「笑脸 / 礼金」
-          // 弹窗系列的三个主关闭按钮此前完全没进白名单：
-          //   iv_jd_home_smile_close / iv_jd_smill_close / iv_jdwm_smile_close
-          // 它们与已收录的 jd_lijin_close / jdwm_close 同属
-          // jd_home_smile_background / jd_home_small_layout 资源族（dex 实证），
-          // 正是「进入 App 几秒后必须手动关掉的京东弹窗」的宿主族。
-          // 另补 jad_video_skip_btn（京东视频跳过）与
-          // mimo_interstitial_endpage_close_img（MIMO 插屏结束页）。
-          // 2026-11-10 第三轮：
-          // 反查发现原先 9 个 vid 只覆盖了自己猜测的那几个，而本包实际打包了
-          // 天目 / 快手 / 百度 / 京东 JAD / AdGain / MIMO / HiAd 多套 SDK 的
-          // 主关闭按钮，全部漏拦 —— 这是京东 60 元券之外的另一类漏拦来源。
-          // 现按 SDK 前缀补齐（下面按家族分组）：
-          //   通用/其它 : iv_close, ad_close, dialog_close, over_ad_close,
-          //               lp_webview_iv_close, baidu_wp_close
-          //   京东 JAD  : jad_interstitial_close, jad_banner_close,
-          //               jad_feed_close, jad_splash_skip_btn,
-          //               jad_video_skip_btn, jd_close, jd_lijin_close,
-          //               jdwm_close, iv_jd_home_smile_close,
-          //               iv_jd_smill_close, iv_jdwm_smile_close
-          //   天目      : tianmu_suspend_iv_close, tianmu_iv_close,
-          //               tianmu_tv_close, tianmu_banner_iv_close,
-          //               tianmu_widget_iv_close
-          //   AdGain    : adgain_interstitial_close_ll,
-          //               adgain_interstitial_close_text, adgain_splash_skip_text
-          //   快手 KSAD : ksad_interstitial_close_outer,
-          //               ksad_interstitial_auto_close, ksad_close_btn,
-          //               ksad_right_close, ksad_ad_endcard_close_root,
-          //               ksad_detail_close_btn, ksad_splash_endcard_close_img,
-          //               ksad_auto_close_btn
-          //   MIMO/HiAd : mimo_interstitial_close_img, mimo_template_close_img,
-          //               mimo_interstitial_skip,
-          //               mimo_interstitial_endpage_close_img,
-          //               hiad_banner_close_button, hiad_btn_skip
-          // 刻意不收：① 激励视频/奖励页的 *_reward_*（红线，用户可能想领奖励）；
-          // ② btn_close / img_close / tv_close / closeButton / closeArea 等业务页
-          // 常见通用名（.mvi.home.HomeActivity 在白名单内，收了会误点首页控件）；
-          // ③ jad_interstitial_close_view / jad_back_close / jad_skip_btn
-          //   这类 layout 名（第四轮之二再次核实：三者均不在 4865 个 type=id
-          //   资源名里，写进 vid 会永不触发）；
-          // ④ ad_close_area / ad_close_delay_area 等「关闭区域」与
-          //   ksad_*_reward_* 激励视频（点击区域可能直接跳落地页 / 影响领奖）。
-          //
-          // 2026-11-10 第四轮之二：末尾补入纯文本关闭信号（第八轮扩到 6 个）。
-      // 它们与组 100
-          // 的 text*="跳过"、组 102 的 text*="广告" 不重叠（本组按 click，
-          // 组 102 按 back），且仍在同一条 rule 里，同一个节点只会被点一次。
-          // 用于兜住「关闭按钮只暴露 text、既无 vid 也无 desc」的自定义 View。
-          //
-          // 2026-11-11 第五轮（官方 optimize#rule-format 复核）：本条 85 个
-          // `||` 分支里只有 desc*="关闭" 一个不合规（快速查询只认 id/vid/text），
-          // 按官方规则整条 rule 必须停用全局快速查询 —— 全树遍历是刻意取舍，
-          // 不是漏配。另：白名单含 jad_splash_skip_btn / hiad_btn_skip 等
-          // skip 类 vid，与组 100 的 text*="跳过" 没有做节点级互斥；同一个
-          // 跳过按钮若同时带文本与资源 ID，可能被两组各点一次。真机出现
-          // 「一次开屏连点两下」时，除排查双规则源外也要考虑此项。
-          //
-          // 2026-11-12 第六轮：变异测试（改规则 → 重生成订阅 → 全量校验）
-          // 证明下面三条一旦被改动，既有全量校验会全部放过，但真机行为会
-          // 明显变坏。校验脚本在 _probe/ 而非本仓库，这里是仓库内唯一防线：
-          //   ① 本组不得加 matchTime / actionMaximum / resetMatch —— 它常驻
-          //      .mvi.home.HomeActivity，加窗口会重现第四轮「几秒后的弹窗
-          //      拦不住」（首页弹窗在任意时刻出现，规则必须常驻）；
-          //   ② 组级 actionCd 1500 必须保留 —— 官方默认只有 1000ms，删掉后
-          //      同一广告可能被连点，第二下容易落在素材上打开落地页；
-          //   ③ 选择器末尾 [visibleToUser=true] 必须保留 —— 删掉会连不可见
-          //      节点一起点，误伤范围扩大到整棵节点树。
-          //
-          // 2026-11-09 二次修复：末尾的 [clickable=true] 是错误约束。官方
-          // RawRuleProps 明确 action 默认 "click" 会自动判断：clickable 用
-          // clickNode，否则降级 clickCenter；clickNode 未被接收也会回落
-          // clickCenter。京东自定义关闭 View 常把点击交给父容器或 onTouch，
-          // isClickable() 为 false，加该条件会把它们整批筛掉。现只用
-          // [visibleToUser=true] 排除不可见节点，不限制点击实现方式。
-          // 2026-11-13 第八轮（两张真机截图）：静态反查 4865 个 type=id 名，
-          // 含 close/skip/dismiss/cancel/exit/abort 的共 202 个，本规则原先只收 39 个。
-          // ① 电商「笑脸 / 品牌弹窗」家族此前只补了京东 3 个，其余 16 个
-          //    （iv_meituan_smile_close / iv_eleme_smile_close / iv_tb_home_smile_close /
-          //     iv_idlefish_smile_close / iv_wph_smile_close / iv_ks_smile_close /
-          //     iv_no_show_smill_close / iv_smill_close / kfc_wp_close 等）全漏 ——
-          //    不同电商素材用不同 vid，正是「同样弹窗有的能拦有的不能拦」的原因。
-          // ② 另补 22 个 AdGain / HiAd / KSAD / 天目 / MIMO 专属 skip-close，
-          //    仍不收 *_reward_*、ad_close_*_area、btn_close 等业务通用名。
-          // ③ resources.arsc 里同时存在「%1$dS | 跳过」与「%1$d秒 | 关闭」两套
-          //    倒计时文案；原 text="关闭" 精确匹配漏掉后者，改为短文案包含匹配
-          //    (text*="关闭" && text.length<=8)，并补 3 个叉号变体。
-          // ④ 刻意不把 text*="跳过" 加进本组：那会与组 100 必然同时命中同一
-          //    开屏按钮，造成每次开屏连点两下。开屏仍由组 100 负责。
           "key": 0,
-          "matches": "[vid=\"iv_close\" || vid=\"ad_close\" || vid=\"dialog_close\" || vid=\"over_ad_close\" || vid=\"lp_webview_iv_close\" || vid=\"baidu_wp_close\" || vid=\"jad_interstitial_close\" || vid=\"jad_banner_close\" || vid=\"jad_feed_close\" || vid=\"jad_splash_skip_btn\" || vid=\"jd_close\" || vid=\"jd_lijin_close\" || vid=\"jdwm_close\" || vid=\"tianmu_suspend_iv_close\" || vid=\"tianmu_iv_close\" || vid=\"tianmu_tv_close\" || vid=\"tianmu_banner_iv_close\" || vid=\"tianmu_widget_iv_close\" || vid=\"adgain_interstitial_close_ll\" || vid=\"adgain_interstitial_close_text\" || vid=\"adgain_splash_skip_text\" || vid=\"ksad_interstitial_close_outer\" || vid=\"ksad_interstitial_auto_close\" || vid=\"ksad_close_btn\" || vid=\"ksad_right_close\" || vid=\"ksad_ad_endcard_close_root\" || vid=\"ksad_detail_close_btn\" || vid=\"ksad_splash_endcard_close_img\" || vid=\"ksad_auto_close_btn\" || vid=\"mimo_interstitial_close_img\" || vid=\"mimo_template_close_img\" || vid=\"mimo_interstitial_skip\" || vid=\"hiad_banner_close_button\" || vid=\"hiad_btn_skip\" || vid=\"iv_jd_home_smile_close\" || vid=\"iv_jd_smill_close\" || vid=\"iv_jdwm_smile_close\" || vid=\"jad_video_skip_btn\" || vid=\"mimo_interstitial_endpage_close_img\" || vid=\"iv_custom_smile_close\" || vid=\"iv_didi_close\" || vid=\"iv_eleme_smile_close\" || vid=\"iv_fz_smile_close\" || vid=\"iv_idlefish_smile_close\" || vid=\"iv_ks_smile_close\" || vid=\"iv_meituan_smile_close\" || vid=\"iv_mt_hotel_smile_close\" || vid=\"iv_mt_shop_smile_close\" || vid=\"iv_mt_xh_smile_close\" || vid=\"iv_mt_yy_smile_close\" || vid=\"iv_no_show_smill_close\" || vid=\"iv_shangou_smile_close\" || vid=\"iv_smill_close\" || vid=\"iv_tb_home_smile_close\" || vid=\"iv_wph_smile_close\" || vid=\"kfc_wp_close\" || vid=\"adgain_interstitial_skip_ll\" || vid=\"adgain_interstitial_skip_text\" || vid=\"adgain_splash_skip_ll\" || vid=\"adgain_splash_skip_new_view\" || vid=\"hiad_skip_text\" || vid=\"ksad_auto_close_text\" || vid=\"ksad_banner_item_close\" || vid=\"ksad_card_close\" || vid=\"ksad_end_close_btn\" || vid=\"ksad_live_end_page_close_btn\" || vid=\"ksad_skip_view_skip\" || vid=\"ksad_splash_circle_skip_left_view\" || vid=\"ksad_splash_circle_skip_right_view\" || vid=\"ksad_splash_skip_left_view\" || vid=\"ksad_splash_skip_right_view\" || vid=\"ksad_web_tip_close_btn\" || vid=\"mimo_banner_view_close\" || vid=\"tianmu_library_close_tv\" || vid=\"tianmu_library_iv_close\" || vid=\"tianmu_library_iv_close_inside\" || vid=\"tianmu_library_iv_skip\" || vid=\"tianmu_widget_tv_skip\" || desc*=\"关闭\" || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
-        }
-      ]
-    },
-    {
-      "key": 102,
-      "name": "广告标签-返回键兜底",
-      // 触发条件是屏幕上出现「广告」标签（京东 / 穿山甲插屏右下角都有），
-      // 用于上面两组都读不到关闭按钮节点时的最后兜底。
-      // 【历史记录，勿当作当前配置】以下三段是 v2 → v4 的修复过程：
-      // - 2026-11-09：原本 enable:false，改为默认启用（当时关闭按钮读不到
-      //   节点时三层规则全落空）。
-      // - 2026-11-10 第三轮：当时 actionCd 与 matchTime 同为 8000、
-      //   resetMatch:"app"、actionMaximum:2，第一次返回键后 8 秒窗口与冷却
-      //   同时耗尽，第二次永远排不进窗口（死配置）；当时把 actionCd 降为 2500。
-      // - 2026-11-10 第四轮：再放宽 matchTime 到 20000、resetMatch 改
-      //   "activity"、actionMaximum 改 3，以覆盖「进入 App 几秒后才弹」的广告。
-      // 当前生效值一律以本组下方字段为准：
-      //   matchTime 60000 / actionMaximum 6 / resetMatch "activity" / actionCd 2500。
-      // ⚠️ 白名单含 .mvi.home.HomeActivity：首页浮层若不消费返回键，
-      //    按返回键可能退出首页（只影响当前页面，不影响计时/轨迹/成绩）。
-      //    若实测发现误退出，在 GKD 界面里单独关掉本组即可，无需改文件。
-      //
-      // 2026-11-10 第四轮：真机反馈「开屏 / 固定式能拦，几秒后弹窗拦不住」。
-      // ① 原 matchTime 8000 + resetMatch:"app"：窗口从进入 App 起算且同会话
-      //    不重置，而首页弹窗是几秒后才出现、关闭按钮还可能再延迟几秒，
-      //    8 秒窗口早已耗尽并休眠 → 返回键兜底形同虚设。改 20 秒并在
-      //    activity 刷新时重置。
-      // ② 原白名单只有 10 项，缺的 14 项恰好大多是 Dialog / Transparent /
-      //    插屏容器（DialogProxyActivity、TransparentActivity、DialogActivity、
-      //    AdActivity、JADWebViewActivity…）—— 正是「弹窗」类广告的宿主。
-      //    关闭按钮读不到节点时，本组在这些容器上根本不生效。当时对齐到 24 项；
-      //    第五轮删掉其中被 excludeActivityIds 遮蔽的 SplashActivity，现为 23 项。
-      // ③ 触发条件原为精确 [text="广告"]，但京东互动弹窗的屏幕文案是
-      //    「摇一摇查看广告」「上滑查看更多内容」这类含子串文本，精确匹配
-      //    全部漏掉。改用包含匹配并补入京东互动引导语；本组 action 是 back
-      //    而不是 click，命中广告素材文案不会点开落地页。
-      // ④ 唯一显式排除 SplashActivity：它是启动入口，按返回键会直接退出 App。
-      "matchTime": 60000,
-      "resetMatch": "activity",
-      "excludeActivityIds": [
-        ".mvi.splash.SplashActivity"
-      ],
-      // 2026-11-11 第五轮：删除曾被 excludeActivityIds 完全遮蔽的
-      // .mvi.splash.SplashActivity。官方 RawAppRuleProps 明确
-      // 「excludeActivityIds 优先级高于 activityIds」，保留它只会造成
-      // 「声明 24 项、实际生效 23 项」的自相矛盾。
-      "activityIds": [
-        ".mvi.splash.AdActivity",
-        ".mvi.home.HomeActivity",
-        "com.yfanads.android.core.act.YFInterstitialActivity",
-        "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
-        "com.yfanads.android.adx.core.TransparentActivity",
-        "com.yfanads.android.adx.core.DialogProxyActivity",
-        "com.yfanads.android.adx.webview.AdxWebViewActivity",
-        "com.qq.e.ads.ADActivity",
-        "com.qq.e.ads.PortraitADActivity",
-        "com.qq.e.ads.LandscapeADActivity",
-        "com.qq.e.ads.DialogActivity",
-        "com.byazt.cef.Stub_",
-        "com.kwad.sdk.api.proxy.app.AdWebViewActivity",
-        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
-        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADWebViewActivity",
-        "com.tianmu.biz.activity.InterstitialActivity",
-        "com.tianmu.biz.activity.LandscapeInterstitialActivity",
-        "com.adgain.sdk.base.activity.AdActivity",
-        "com.baidu.mobads.sdk.api.AppActivity",
-        "com.baidu.mobads.sdk.api.BdShellActivity",
-        "com.bytedance.msdk.api.activity.TTTransparentActivity",
-        "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
-        "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity"
-      ],
-      // 2026-11-13 第八轮：dex 实证广告按队列轮播（showMaxCacheAds /
-      // adCache / NextAd / adQueue / 「即将播放下一条广告」），同一个
-      // HomeActivity 内会连出多条广告。原 20 秒窗口与 3 次上限在第 4 条
-      // 起休眠；放宽到 60 秒 / 6 次，actionCd 2500 与 back 动作不变，
-      // 仍有硬上限且 actionCd < matchTime，避免首页被无限按返回键退出。
-      "actionCd": 2500,
-      "actionMaximum": 6,
-      "rules": [
-        {
-          // 包含匹配而非精确匹配：京东互动插屏的标签常写成「摇一摇查看广告」
-          // 「上滑查看更多内容」，精确 text="广告" 永远命中不了。后半段是
-          // dex 中实证存在的京东 Lottie 互动引导语，用于关闭按钮完全读不到
-          // 节点时兜底（action 是 back，命中素材文案不会跳落地页）。
-          "key": 0,
-          "action": "back",
-          "matches": "[text*=\"广告\" || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\" || text*=\"滑动查看详情\" || text*=\"立即领取\"][visibleToUser=true]"
+          "matches": "[desc*=\"关闭\" || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
         }
       ]
     }
