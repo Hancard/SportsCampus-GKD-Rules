@@ -57,6 +57,8 @@ https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 > `version 8`（三时点实测见「第四轮之三」）。滞后期间拿到的旧规则缺第四轮时序
 > 修复与京东 smile 关闭按钮，表现正是「仓库明明更新了、几秒后的弹窗广告照旧」。
 > `raw.gitmirror.com` 则 TLS 握手失败，同样不可用。
+> 2026-11-13 第九轮再次实测：`version 11` 推送后 `raw` 已返回 12722 字节的 v11，
+> 而 `cdn` / `fastly` / `gcore` **三个节点仍全部停在 `version 10`**（10356 字节）。
 > **导入后请在 GKD 订阅页核对版本号是否为 `version: 11`**；不是就换上面的
 `raw.githubusercontent.com` 链接重新导入（`github.com` 入口只是同一文件的 302 跳板，
 不能作为另一条独立线路）。

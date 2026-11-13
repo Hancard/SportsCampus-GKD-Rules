@@ -10,8 +10,9 @@
 // ⚠️ 不推荐任何 jsdelivr 节点（cdn.jsdelivr.net / fastly.jsdelivr.net /
 //    gcore.jsdelivr.net）：它们对 @main 有不可控的长缓存，cdn 曾长期停在
 //    version 1；version 8 发布后 fastly / gcore 滞后约 18 小时才追上，
-//    version 9 发布后又一刻钟内仍停在 version 8。滞后期间会拿到旧规则，
-//    导入后务必在 GKD 订阅页核对 version。
+//    version 9 发布后又一刻钟内仍停在 version 8；version 11 发布后
+//    cdn / fastly / gcore 三个节点又同时停在 version 10。滞后期间会拿到
+//    旧规则，导入后务必在 GKD 订阅页核对 version。
 //
 // 本订阅刻意不写 updateUrl：官方 RawSubscription 规定该字段缺失时，GKD 会
 // 「使用添加订阅时填写的链接」检查更新。这样用哪个链接导入就一直用哪个链接，
