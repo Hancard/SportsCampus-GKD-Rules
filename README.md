@@ -59,12 +59,12 @@ https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 > `raw.gitmirror.com` 则 TLS 握手失败，同样不可用。
 > 2026-11-13 第九轮再次实测：`version 11` 推送后 `raw` 已返回 12722 字节的 v11，
 > 而 `cdn` / `fastly` / `gcore` **三个节点仍全部停在 `version 10`**（10356 字节）。
-> **导入后请在 GKD 订阅页核对版本号是否为 `version: 11`**；不是就换上面的
+> **导入后请在 GKD 订阅页核对版本号是否为 `version: 12`**；不是就换上面的
 `raw.githubusercontent.com` 链接重新导入（`github.com` 入口只是同一文件的 302 跳板，
 不能作为另一条独立线路）。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **4 个规则组（100/101/102/103）**。
-后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 11`）。
+后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 12`）。
 若之前已导入过本订阅，在订阅页手动刷新一次即可拿到最新规则。
 
 ### 方式 B：本地粘贴应用规则
@@ -86,7 +86,8 @@ GKD → 订阅 → 本地订阅 → 应用规则 → + → 粘贴整段 JSON5 �
 
 本规则是**补充**：组 100 按文本匹配开屏「跳过」，组 101 按 78 个已核实的 `vid`
 在**任意 Activity**（业务页黑名单除外）匹配关闭按钮，组 103 按 contentDescription
-与短文案在广告容器内兜底，组 102 在都读不到节点时按返回键。组 100 与组 101 是
+与短文案在**同一业务黑名单范围内**兜底，组 102 在都读不到节点时按返回键。
+四个组都不再使用 `activityIds` 白名单。组 100 与组 101 是
 **职责互补而非节点互斥**：若某个跳过按钮同时带 `text*="跳过"` 与组 101 的 skip 类
 `vid`，两组可能各点一次（见「真机排障」）。主规则仍建议用持续维护的
 [`Lin-arm/GKD_subscription`](https://github.com/Lin-arm/GKD_subscription)，任选一个订阅地址：
@@ -157,17 +158,17 @@ https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
 
 | key | 行为 | 约束 |
 |---|---|---|
-| 100 | 开屏 / 首页弹窗「跳过」文本兜底 | `matchTime 60000`、`actionMaximum 4`、`resetMatch: activity`、`actionCd 1500`；`excludeActivityIds` 41 项覆盖本包 136/140 个业务 Activity，只留 4 个广告宿主；`fastQuery`、`matchRoot`、`forcedTime 10000` |
-| 101 | 全屏 / 插屏广告关闭按钮（`vid` 精确） | **无 `activityIds` 白名单**：改用与组 100 相同的 41 项业务黑名单，任意宿主上的广告浮层都生效；`fastQuery: true`、`matchRoot: true`、`forcedTime 10000`、`actionCd 1500`；**单条 rule** 用 `\|\|` 连接 78 个已核实的 `vid`，不设 `matchTime` 窗口 |
-| 102 | 广告标签 / 京东互动引导语返回键兜底 | **默认启用**；同样改为黑名单（41 项业务页 + 启动入口 `SplashActivity`），不再受白名单限制；`matchTime 60000`、`actionMaximum 6`、`resetMatch: activity`、`actionCd 2500` 限流；`matchRoot`、`forcedTime 10000` |
-| 103 | 关闭文案兜底（限广告容器） | 从组 101 拆出 `desc*="关闭"`、`text*="关闭"&&text.length<=8` 与 5 种叉号变体；**保留 `activityIds` 白名单 34 项**（含第九轮补齐的整族容器前缀），避免业务页误点「关闭」；`actionCd 1500`、`matchRoot`、`forcedTime 10000`，不设窗口 |
+| 100 | 开屏 / 首页弹窗「跳过」文本兜底 | `matchTime 60000`、`actionMaximum 4`、`resetMatch: activity`、`actionCd 1500`；`excludeActivityIds` 41 项覆盖本包 136/140 个业务 Activity，只留 4 个广告宿主；`fastQuery`、`matchRoot`、`forcedTime 30000` |
+| 101 | 全屏 / 插屏广告关闭按钮（`vid` 精确） | **无 `activityIds` 白名单**：改用与组 100 相同的 41 项业务黑名单，任意宿主上的广告浮层都生效；`fastQuery: true`、`matchRoot: true`、`forcedTime 30000`、`actionCd 1500`；**单条 rule** 用 `\|\|` 连接 78 个已核实的 `vid`，不设 `matchTime` 窗口 |
+| 102 | 广告标签 / 京东互动引导语返回键兜底 | **默认启用**；同样改为黑名单（41 项业务页 + 启动入口 `SplashActivity`），不再受白名单限制；第十轮删掉 `text*="立即领取"` / `text*="滑动查看详情"`（业务活动文案，会误按返回键）并给 `text*="广告"` 加 `text.length<=12`；`matchTime 60000`、`actionMaximum 6`、`resetMatch: activity`、`actionCd 2500` 限流；`matchRoot`、`forcedTime 30000` |
+| 103 | 关闭文案兜底（全 Activity，业务黑名单） | 从组 101 拆出 `desc*="关闭"`、`text*="关闭"&&text.length<=8` 与 5 种叉号变体；**第十轮删掉 34 项容器白名单**，改用与组 100 相同的 41 项业务黑名单（可达 194/330 个组件，原白名单只有 124/330、自有页仅 4/140）；误点风险由业务黑名单 + `actionCd 1500` + `[visibleToUser=true]` 约束；`matchRoot`、`forcedTime 30000`，不设窗口 |
 
 组 100 与组 101 是**按文本 / 按资源 ID 互补**，不是同一条规则写两遍；
-但二者没有做节点级互斥，详见「已知限制」。组 101 / 102 改用业务黑名单后仍在
+但二者没有做节点级互斥，详见「已知限制」。四个组统一改用业务黑名单后仍在
 `excludeActivityIds` 内挡住激励视频 / 奖励页与 `mvi.run` / `mvi.sport` /
 `RunPlanActivity`，**不会作用于跑步页**；无硬编码屏幕坐标、无跨应用全局规则。
 组 102 额外排除启动入口 `SplashActivity`（在那里按返回键会直接退出 App），且其动作是
-`back` 而非点击，命中广告素材文案（「立即领取」等）也不会打开落地页。组 101 与组 103
+`back` 而非点击，命中广告素材文案也不会打开落地页。组 101 与组 103
 可能对同一节点各命中一次；若实测出现连点，在 GKD 界面单独关掉组 103。若发现首页被
 误退出，单独关掉组 102 即可。
 
@@ -486,7 +487,8 @@ Activity、4865 个 `type=id` 名、订阅与规则 groups 深度比对、每个
 > 边界：截图看不到节点树。圆形 `×` 若是纯绘制、无 `vid` / `text` / `desc` 的
 > ImageView，仍只能靠组 102 的 `back` 兜底；本轮**没有**加入按位置 / 尺寸猜节点的
 > 规则 —— 无快照时那样做会误点首页控件，也违背「不用硬编码屏幕坐标」红线。
-> 第九轮（`version 11`）已从结构上重修白名单与 `matchRoot`；若仍漏，请按
+> 第九轮（`version 11`）重修了组 101 / 102 的白名单与 `matchRoot`，
+> 第十轮（`version 12`）把组 103 残留的白名单也删掉并收紧了组 102；若仍漏，请按
 > 「真机排障 → 抓快照」提供 `activityId` 与节点树，尤其注意 toast
 > 「即将播放下一条广告」出现**之后**的那条广告。
 
@@ -507,8 +509,11 @@ Activity、4865 个 `type=id` 名、订阅与规则 groups 深度比对、每个
 `excludeActivityIds` 业务黑名单（41 项覆盖 136/140 个自有业务页），于是任意宿主上的
 广告浮层都能命中；组 100 / 101 / 102 全部加 `matchRoot: true` 与 `forcedTime: 10000`；
 组 101 只留 78 个 `vid` 并启用 `fastQuery: true`；新增**组 103** 承接
-`desc*="关闭"`、`text*="关闭"&&text.length<=8` 与 5 种叉号变体，仍保留广告容器白名单
+`desc*="关闭"`、`text*="关闭"&&text.length<=8` 与 5 种叉号变体，当时仍保留广告容器白名单
 （补到 **34 项**，含第九轮反查漏掉的整族前缀），避免业务页误点「关闭」。
+
+> **第十轮更正**：给组 103 留白名单与本轮第 1 条根因自相矛盾 —— 插屏既然是宿主
+> Activity 上的浮层，白名单就同样会挡住它。量化反查见下面「第十轮」章节。
 
 > 现象解释：组 100 没有白名单，所以开屏一直能拦；组 101 / 102 被白名单挡住，
 > 所以「进入 App 几秒后的京东弹窗」一直拦不住。这与 `vid` 数量、窗口时长都无关。
@@ -523,13 +528,42 @@ Activity、4865 个 `type=id` 名、订阅与规则 groups 深度比对、每个
 > `activityIds` 白名单、删 `matchRoot` / `forcedTime`、组 101 混入 `desc` 分支、
 > 组 103 误开 `fastQuery` 等），`UNCAUGHT_AFTER_RESYNC=0`，三份文件逐字节恢复。
 
+### 第十轮：复核第九轮残留缺陷（`version 12`，2026-11-14）
+
+本轮没有新增 `vid`，也没有再放宽窗口；量化反查 `_probe/112_round10.txt` 发现
+第九轮改对了方向，却留下三处自相矛盾或回归。
+
+| # | 证据 | 结论 |
+|---|---|---|
+| 1 | 组 103 的 34 项 `activityIds` 白名单只覆盖 **124/330** 个组件，自有 Activity 仅 **4/140**；136 个自有页与 41 个第三方广告容器（天目 13、快手 6、穿山甲 4…）全部在名单外。改用业务黑名单后可达 **194/330**（多 70 个） | 第九轮一边证明「插屏是宿主上的浮层、`activityId` 是宿主」，一边唯独给组 103 留了白名单。而组 103 承接的 `desc*="关闭"`、「N秒 \| 关闭」与圆形 × 恰是两张真机截图最可能命中的信号 |
+| 2 | 组 102 删白名单后作用面扩到 194 个组件；`text*="立即领取"` 在 `resources.arsc` 命中 1 处、dex 命中 2 处，`「广告」` 在 arsc 命中 28 处，均属业务活动 / 设置文案 | 命中即按 `back`，会误退首页或业务页。这是第九轮删白名单引入的回归 |
+| 3 | 官方 `RawCommonProps#forcedTime`：「在**开始匹配后的一段时间内**」主动查询。组 101 / 103 无 `matchTime` / `actionMaximum` / `resetMatch`，从进 App 起常驻、不休眠也不被唤醒 | 计时起点不随队列轮播刷新；第八轮已由 dex 证实 `showMaxCacheAds` / `NextAd` / `adQueue` 轮播，第 2 / 3 条广告落在 10 秒之后，主动轮询已过期 |
+
+**改法**：组 103 删掉白名单，改用与组 100 相同的 41 项业务黑名单（136/140 个
+自有业务页仍被排除，误点风险由黑名单 + `actionCd 1500` + `[visibleToUser=true]`
+共同约束）；组 102 移除 `text*="立即领取"` 与 `text*="滑动查看详情"`，给
+`text*="广告"` 加 `text.length<=12`，只保留 SDK 专属互动引导语；四组
+`forcedTime` 10000 → 30000。
+
+> 本轮同时复核了两处**无需改动**的官方语义，避免过度修复：
+> `selector#attr` 明确「并列的 `[]` 视为 `&&`」，即 `[a][b] == [a&&b]` 是同一节点
+> 的 AND，不是后代关系；`optimize#rule-format` 的 ✅ 示例
+> `C[id='x'][childCount=2]` 说明组 100 / 101 的
+> `[text*=...][visibleToUser=true]`、`[78 个 vid || ...][visibleToUser=true]`
+> 符合 `fastQuery` 规定格式。
+
+> 验证：全量校验 **464 项 0 失败**；变异测试扩到 **37 个**（新增 R32–R37：
+> 重新引入组 103 白名单 / 业务文案 / `forcedTime 10000`、删 `matchRoot` 或
+> `visibleToUser`、破坏黑名单一致性），`UNCAUGHT_AFTER_RESYNC=0`，
+> 三个文件逐字节恢复。
+
 ## 版本核对
 
 规则中的 `activityIds` / `excludeActivityIds` 与 78 个 `vid` 已逐项对照 7.3.93 的
 完整 `AndroidManifest.xml`（330 个 activity / activity-alias）与 `resources.arsc`
 （4865 个 `type=id` 名）：`iv_close`、`ad_close`、`dialog_close`、
-`jad_interstitial_close`、`tianmu_iv_close` 等均在规则内且确实存在；组 103 的
-34 项白名单与组 100/101/102 的 41 项业务黑名单也逐项反查过 startWith 命中。
+`jad_interstitial_close`、`tianmu_iv_close` 等均在规则内且确实存在；四个组的
+41 / 41 / 42 / 41 项业务黑名单也逐项反查过 startWith 命中（组 102 多一个启动入口）。
 `fl_native`、`ksad_ad_dislike` 只是早期探针在 arsc 里查到过的名字，**并未写进
 规则**；旧订阅用的 `layoutContainer`、`ad_flag_source_layout` 已消失。
 
@@ -543,7 +577,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 
 ## 验证与回退
 
-1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 11`；本地粘贴的确认末尾有
+1. **先核对规则版本**：远程订阅在 GKD 订阅页应显示 `version: 12`；本地粘贴的确认末尾有
    `// === END OF FILE ===`，且能看到 4 个组（100/101/102/103）、组 101 的
    `fastQuery: true` 与 `matchRoot: true`。版本不对，后面测了也白测。
 2. 四个组保持默认启用，冷启动 3 次查看 GKD 触发记录；若发现首页被自动退出，
@@ -567,12 +601,13 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 101 | 不得加 `matchTime` / `actionMaximum` / `resetMatch` | 首页延迟弹窗在规则休眠后才出现，重新漏拦 |
 | 101 | 保留 `actionCd: 1500` | 同一广告连点，可能点开落地页 |
 | 101 | 选择器末尾保留 `[visibleToUser=true]`、保持**单条 rule**、只含 `vid` 分支 | 误点不可见节点 / `fastQuery` 失效 |
-| 101 / 102 | **不得重新引入 `activityIds` 白名单** | 重现第九轮根因：浮层宿主不在白名单时漏拦 |
+| 全部 | **不得重新引入 `activityIds` 白名单** | 重现第九 / 十轮根因：浮层宿主不在白名单时漏拦 |
 | 100 | 保留 `fastQuery: true`、`resetMatch: "activity"`、`actionMaximum: 4` | 开屏退回全树遍历 / 第二个广告位永不触发 |
 | 102 | 保留 `action: "back"`、`excludeActivityIds` 排除启动入口 | 命中素材跳落地页 / 按返回键直接退出 App |
-| 103 | 保留广告容器白名单、不含 `text*="跳过"`、不设窗口 | 业务页误点「关闭」/ 与组 100 连点开屏 |
-| 全部 | 保留 `matchRoot: true`（以及 `forcedTime: 10000`） | 倒计时节点持续作为事件节点时关闭按钮匹配不到 / Flutter 页面漏拦 |
-| 全部 | `activityIds` 不含任何 `*_reward_*`、跑步 / 成绩页 | 触碰红线 |
+| 103 | 保留 41 项业务黑名单、不含 `text*="跳过"`、不设窗口 | 误删黑名单前缀会进入业务页 / 与组 100 连点开屏 |
+| 全部 | 保留 `matchRoot: true`（以及 `forcedTime: 30000`） | 倒计时节点持续作为事件节点时关闭按钮匹配不到 / 轮播第 2、3 条广告漏拦 |
+| 102 | 不得重新引入 `text*="立即领取"` / `text*="滑动查看详情"` | 业务活动按钮触发 `back`，误退首页 |
+| 全部 | `excludeActivityIds` 保留 41 项业务前缀，不收激励视频 / 跑步 / 成绩页 | 触碰红线 |
 
 改完请重新生成订阅（规则注释不会进订阅，但 `groups` 必须与主规则逐字段一致）
 并让 `version` 递增；本地粘贴方式不受 `version` 影响。
@@ -589,16 +624,17 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 仓库已更新但广告照旧、规则内容没变 | 用 `*.jsdelivr.net` 任一节点导入，每次发版后缓存滞后数小时到一天 | 在 GKD 订阅页核对版本号；**删掉订阅**，改用 `raw.githubusercontent.com` 重新导入，`?v=` 参数不能绕过缓存 |
 | 主链接打不开，换 `github.com/.../raw/main/` 也打不开 | 该路径最终仍 302 到 `raw.githubusercontent.com`，不是独立线路（2026-11-12 本机实测 `github.com` 3/3 次代理 502） | 改用**方式 B 本地粘贴**；或临时用 jsDelivr 节点并核对 `version` |
 | 订阅页停在旧 `version`、几秒后弹窗仍拦不住 | 缓存节点还没追上 `main`（v9 发布后仍停在 `version 8`） | 同上，删掉重新导入；`version 6` 及更早不含第四轮的时序修复 |
-| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 11`；仍无效就抓快照看真实 `vid` / `activityId` |
-| **同一屏连出第 2 / 3 条广告就拦不住**（toast「即将播放下一条广告」） | `version 9` 及更早：组 100 / 102 的 20 秒窗口与 2 / 3 次上限在轮播时先休眠，且组 101 缺该电商素材的 smile 关闭 `vid` | 升到 `version 11`；仍漏就在 toast 出现后立刻抓快照，看新广告的 `activityId` 与圆形 `×` 的 `vid` / `text` / `desc` |
-| **开屏 / 固定式能拦，进入 App 几秒后的弹窗拦不住** | `version 10` 及更早：组 101 / 102 的 `activityIds` 白名单只覆盖 30/330 个组件，插屏浮层宿主不在名单内；且缺 `matchRoot` / `forcedTime` | **升到 `version 11`**（第九轮结构性重修）；核对订阅页版本号，仍漏就抓快照确认弹窗的 `activityId` 与关闭节点 |
-| 升到 `version 11` 仍完全拦不住任何弹窗 | 订阅没真正刷新，或 GKD 无障碍被 vivo 回收 | 订阅页必须是 `version: 11` 且显示 4 个规则组；检查触发记录有无命中、电池白名单 |
-| 首页「关闭」「×」被误点 | 组 103 的泛化文案命中了业务控件 | 单独关掉组 103（组 101 的 `vid` 精确匹配不受影响） |
+| 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 12`；仍无效就抓快照看真实 `vid` / `activityId` |
+| **同一屏连出第 2 / 3 条广告就拦不住**（toast「即将播放下一条广告」） | `version 9` 及更早：组 100 / 102 的 20 秒窗口与 2 / 3 次上限在轮播时先休眠，且组 101 缺该电商素材的 smile 关闭 `vid` | 升到 `version 12`；仍漏就在 toast 出现后立刻抓快照，看新广告的 `activityId` 与圆形 `×` 的 `vid` / `text` / `desc` |
+| **开屏 / 固定式能拦，进入 App 几秒后的弹窗拦不住** | `version 10` 及更早：组 101 / 102 的 `activityIds` 白名单只覆盖 30/330 个组件，插屏浮层宿主不在名单内；且缺 `matchRoot` / `forcedTime` | **升到 `version 12`**（第九 / 十轮结构性重修，组 103 白名单也已删除）；核对订阅页版本号，仍漏就抓快照确认弹窗的 `activityId` 与关闭节点 |
+| 升到 `version 12` 仍完全拦不住任何弹窗 | 订阅没真正刷新，或 GKD 无障碍被 vivo 回收 | 订阅页必须是 `version: 12` 且显示 4 个规则组；检查触发记录有无命中、电池白名单 |
+| 首页「关闭」「×」被误点 | 组 103 的泛化文案命中了首页控件（业务黑名单只挡业务 Activity，首页 `HomeActivity` 是广告浮层宿主，刻意不排除） | 单独关掉组 103（组 101 的 `vid` 精确匹配不受影响） |
 | 关闭按钮被连点两下、反而打开了广告落地页 | 旧版组 101 把 `vid` 与 `desc*="关闭"` 拆成两条 rule，同一按钮被命中两次 | 确认已升到 `version 4` 或更新；两条已合并为单条 rule。仍复现就关掉上游订阅排查双规则源 |
 | 返回键兜底只按了一次就没动静 | 旧版 `actionCd` 与 `matchTime` 同为 8000，第二次永远排不进窗口 | 确认已升到 `version 4` 或更新，`actionCd` 应为 2500 |
 | 首页被自动退出 | 组 102 的返回键没被广告浮层消费 | 在 GKD 界面单独关掉组 102，组 100 / 101 继续生效；附快照提 issue |
+| 首页被误退出（升级到 `version 12` 前） | 组 102 的 `text*="立即领取"` 命中业务活动按钮并触发 `back` | 确认订阅页是 `version: 12`；仍复现就单独关掉组 102 |
 | 冷启动完全没有触发记录 | 无障碍被 vivo 回收、规则未保存成功 | 查 GKD 服务状态、电池白名单、多任务锁定；重新粘贴一次 |
-| 有触发记录但广告还在 | 命中的是旧节点，或广告页不在白名单 | 看触发记录里的 `activityId`，把脱敏快照发 issue |
+| 有触发记录但广告还在 | 命中的是旧节点，或关闭按钮是无 `vid` / `text` / `desc` 的纯绘制 View | 看触发记录里的 `activityId`，把脱敏快照发 issue |
 | 首页正常按钮被点 | 组 101 白名单误命中业务节点 | 先关组 101，确认是否发生在 `mvi.home.HomeActivity` |
 | 一次开屏连点两下 | 两个规则源同时生效；或同一跳过按钮同时命中组 100 的 `text*="跳过"` 与组 101 的 skip 类 `vid` | 先二选一（只留上游订阅或只留本规则）；仍复现就临时关组 101 确认是否跨组重叠 |
 | 跑步途中出现自动点击 | **立刻关闭 GKD 无障碍开关** | 附触发记录提 issue，核对 `excludeActivityIds` 是否覆盖该页面 |
@@ -628,7 +664,7 @@ manifest 里不存在，写成它会导致规则永不触发。
   不处理预加载缓存素材本身，也不修改任何网络请求。
 - 需要 GKD 本体与无障碍权限（撰写时为 v1.13.0）。Android 13+ 侧载安装时，
   无障碍开关可能被「受限设置」置灰，需要在系统应用信息里手动允许。
-- 组 100 的 `[text*="跳过"]` 与组 101 白名单里的 skip 类 `vid`
+- 组 100 的 `[text*="跳过"]` 与组 101 的 skip 类 `vid`
   （`jad_splash_skip_btn`、`hiad_btn_skip`、`mimo_interstitial_skip` 等）**没有做
   节点级互斥**：同一个开屏跳过按钮若同时带文本与资源 ID，可能被两组各点一次。
   真机出现「一次开屏连点两下」时，除排查双规则源外也要考虑此项。目前刻意保留
@@ -638,14 +674,18 @@ manifest 里不存在，写成它会导致规则永不触发。
   加窗口会重现第四轮的「几秒后弹窗拦不住」。第九轮把它拆成纯 `vid` 分支并启用
   `fastQuery: true`，不再是 85 分支全树遍历；误点风险由 `actionCd 1500`、
   `[visibleToUser=true]`、只收 SDK 专属 `vid` 名与 41 项业务黑名单共同约束。
-  泛化文案已移到组 103 并保留容器白名单。若真机发现首页正常控件被点，
+  泛化文案已移到组 103，第十轮起同样改用业务黑名单。若真机发现首页正常控件被点，
   先单独关组 103，再关组 101。
-- 组 101 / 102 不再有 `activityIds` 白名单，作用面比前八轮更宽；红线依赖
+- 四个组都不再有 `activityIds` 白名单，作用面比前八轮更宽；红线依赖
   `excludeActivityIds` 的 41 项前缀完整覆盖自有业务页。**改动黑名单前先跑全量校验**，
-  误删前缀会让规则进入跑步 / 成绩 / 定位页面。
-- `matchRoot: true` 会让每次匹配从根节点开始，`forcedTime: 10000` 会在唤醒后
-  主动轮询 10 秒。二者对 Flutter / WebView 广告是必要的，但比默认配置的耗电略高；
-  若待机耗电明显增加，可把 `forcedTime` 调小或只保留组 101 的轮询。
+  误删前缀会让规则进入跑步 / 成绩 / 定位页面。第十轮量化：黑名单之外可达 194/330
+  个组件（190 个第三方广告 / 桥接容器 + 4 个自有广告宿主）。
+- `matchRoot: true` 会让每次匹配从根节点开始，`forcedTime: 30000` 会在唤醒后
+  主动轮询 30 秒（第八轮证实广告队列轮播，第 2 / 3 条出现在 10 秒之后）。二者对
+  Flutter / WebView 广告是必要的，但比默认配置的耗电略高；若待机耗电明显增加，
+  可把 `forcedTime` 调小或只保留组 101 的轮询。官方
+  `RawCommonProps#forcedTime` 只保证「开始匹配后的一段时间内」主动查询，常驻规则
+  的计时起点不会因轮播刷新而重置，所以宁可取稍大的窗口。
 
 ## 红线
 
