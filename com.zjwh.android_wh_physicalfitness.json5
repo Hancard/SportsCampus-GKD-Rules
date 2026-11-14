@@ -34,15 +34,33 @@
 //    desc 分支会让整条 || 表达式停用快速查询。现将 vid 与泛化信号拆成组 101/103，
 //    组 101 启用 fastQuery:true，78 个 vid 全部合规。
 //
-// === 必须保持的不变量（第六轮变异测试 + 第九轮结构回归）===
+// === 第十轮复核（version 12，2026-11-14）===
+// 对第九轮改动做量化反查（_probe/112_round10.txt），确认三处残留缺陷：
+//  ① 组 103 仍用 activityIds 白名单 34 项 → 实测只覆盖 124/330 个组件，
+//    自有 Activity 仅 4/140。这与第九轮「插屏是宿主上的浮层」根因自相矛盾：
+//    截图里「N秒 | 关闭」与圆形 × 正是本组的泛化信号，却最可能被白名单挡住。
+//    换成 41 项业务黑名单后可达 194/330（多 70 个），136/140 个自有业务页
+//    仍被红线排除。
+//  ② 组 102 删白名单后作用面扩到 194 个组件，选择器却仍含
+//    text*="立即领取"（arsc 1 处 / dex 2 处，业务活动文案）与
+//    text*="滑动查看详情"；按 back 会误退页面。已移除，并给 text*="广告"
+//    加 text.length<=12，只保留 SDK 专属互动引导语。
+//  ③ forcedTime 10000：官方定义为「在开始匹配后的一段时间内」主动查询；
+//    组 101/103 常驻无窗口，计时起点不随队列轮播刷新。第八轮已证实
+//    showMaxCacheAds / NextAd 轮播，第 2/3 条广告落在 10 秒之后 → 统一 30000。
+//  另：官方 selector#attr 确认并列 [] 是同一节点 AND（[a][b] == [a&&b]），
+//    optimize#rule-format 复核组 100 / 101 的 fastQuery 格式合规，均无需改动。
+//
+// === 必须保持的不变量（第六 / 九 / 十轮变异测试 + 结构回归）===
 //  · 组 101 不得加 matchTime / actionMaximum / resetMatch：它常驻任意 Activity，
 //    加窗口会重现「首页弹窗在任意时刻出现却拦不住」。
 //  · 组 101 必须保留 actionCd 1500 与选择器末尾 [visibleToUser=true]。
 //  · 组 101 不得混入 desc 分支，否则 fastQuery 整体失效。
-//  · 组 101/102 不得重新引入 activityIds 白名单（本轮根因）。
-//  · 组 100/101/102 的 excludeActivityIds 必须覆盖全部自有业务页面。
+//  · 四个组都不得重新引入 activityIds 白名单（第九 / 十轮根因）。
+//  · 组 100/101/102/103 的 excludeActivityIds 必须覆盖全部自有业务页面。
 //  · 组 103 不得加 text*="跳过"（与组 100 必然连点开屏按钮）。
-//  · 所有组必须保留 matchRoot:true。
+//  · 所有组必须保留 matchRoot:true 与 forcedTime:30000（轮播第 2/3 条）。
+//  · 组 102 不得重新引入 text*="立即领取" / text*="滑动查看详情"（误按返回键）。
 // ============================================================================
 
 {
@@ -101,8 +119,8 @@
       "fastQuery": true,
       // 从根节点开始匹配：倒计时文本节点变化时关闭按钮仍能被找到。
       "matchRoot": true,
-      // Flutter / WebView 不发无障碍事件时主动轮询 10 秒。
-      "forcedTime": 10000,
+      // Flutter / WebView 不发无障碍事件时主动轮询 30 秒。
+      "forcedTime": 30000,
       // 队列轮播（dex: showMaxCacheAds / adCache / NextAd / adQueue）同一次
       // Activity 内会连出多条广告，故 60 秒窗口 + 4 次上限；actionCd < matchTime。
       "matchTime": 60000,
@@ -167,7 +185,7 @@
       ],
       "fastQuery": true,
       "matchRoot": true,
-      "forcedTime": 10000,
+      "forcedTime": 30000,
       "actionCd": 1500,
       // 78 个 vid 逐个核对为 resources.arsc 中 type=id 的真实资源名；
       // 不收 *_reward_*、ad_close_*_area 与业务页通用名 btn_close / tv_close。
@@ -185,8 +203,11 @@
       // 关闭按钮读不到节点时按返回键。同样改为黑名单，避免浮层宿主不在白名单。
       // 触发条件仍要求屏幕上出现广告标签/互动引导语，action 是 back 而非 click，
       // 命中广告素材文案不会点开落地页；60 秒 / 6 次硬上限防止首页被反复退出。
+      // 第十轮：删掉 text*="立即领取" 与 text*="滑动查看详情"（arsc/dex 命中属
+      // 业务活动文案，删白名单后按 back 会误退首页）；text*="广告" 加长度上限，
+      // 只保留 SDK 专属互动引导语（dex 中各仅 1 处）。
       "matchRoot": true,
-      "forcedTime": 10000,
+      "forcedTime": 30000,
       "matchTime": 60000,
       "resetMatch": "activity",
       // 业务黑名单 + 启动入口（返回键退出 App）。
@@ -240,58 +261,65 @@
         {
           "key": 0,
           "action": "back",
-          "matches": "[text*=\"广告\" || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\" || text*=\"滑动查看详情\" || text*=\"立即领取\"][visibleToUser=true]"
+          "matches": "[text*=\"广告\"&&text.length<=12 || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\"][visibleToUser=true]"
         }
       ]
     },
     {
       "key": 103,
-      "name": "关闭文案兜底（限广告容器）",
-      // 第九轮从组 101 拆出的泛化信号：contentDescription 含「关闭」、短文案
-      // 「N秒 | 关闭」与 5 种叉号变体。这些信号在业务页面也可能出现，因此本组
-      // 保留广告容器白名单，不能像组 101 那样全 Activity 生效。
-      // 白名单在旧 24 项基础上补齐第九轮反查漏掉的整族容器前缀：快手
-      // BaseFragmentActivity$、华为 openalliance.ad.activity.、穿山甲 live
-      // Activity_、acse.ottn 浮层、openliveplugin StubActivity$、KwadHandler。
+      "name": "关闭文案兜底（全 Activity，业务黑名单）",
+      // 第十轮：删掉 activityIds 白名单。第九轮已证明插屏是叠在宿主 Activity 上
+      // 的浮层，却唯独给本组留了白名单 —— 实测 34 项只覆盖 124/330 个组件、
+      // 自有 Activity 仅 4/140，泛化关闭信号在其余 136 个自有页与 41 个第三方
+      // 广告容器上全部失配。改用与组 100 相同的 41 项业务黑名单后可达 194/330，
+      // 误点风险由「业务页被排除 + actionCd + visibleToUser」共同约束。
+      // 承接 contentDescription 含「关闭」、「N秒 | 关闭」短文案与 5 种叉号变体；
       // 刻意不含任何 *reward* 激励视频、广告落地页与下载代理。
-      "activityIds": [
-        ".mvi.splash.SplashActivity",
-        ".mvi.splash.AdActivity",
-        ".mvi.home.HomeActivity",
-        "com.yfanads.android.core.act.YFInterstitialActivity",
-        "com.yfanads.android.adx.components.fullscreen.AdxFullScreenVideoActivity",
-        "com.yfanads.android.adx.core.TransparentActivity",
-        "com.yfanads.android.adx.core.DialogProxyActivity",
-        "com.yfanads.android.adx.webview.AdxWebViewActivity",
-        "com.qq.e.ads.ADActivity",
-        "com.qq.e.ads.PortraitADActivity",
-        "com.qq.e.ads.LandscapeADActivity",
-        "com.qq.e.ads.DialogActivity",
-        "com.byazt.cef.Stub_",
-        "com.kwad.sdk.api.proxy.app.AdWebViewActivity",
-        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADTransparentActivity",
-        "com.jd.ad.sdk.bl.adinteraction.deeplink.JADWebViewActivity",
-        "com.tianmu.biz.activity.InterstitialActivity",
-        "com.tianmu.biz.activity.LandscapeInterstitialActivity",
-        "com.adgain.sdk.base.activity.AdActivity",
-        "com.baidu.mobads.sdk.api.AppActivity",
-        "com.baidu.mobads.sdk.api.BdShellActivity",
-        "com.bytedance.msdk.api.activity.TTTransparentActivity",
-        "com.bytedance.sdk.openadsdk.core.activity.base.TTDelegateActivity",
-        "com.kwad.sdk.api.proxy.app.KsFullScreenVideoActivity",
-        ".kwad.KwadHandlerActivity",
-        "com.kwad.auth.login.KwadRouteHandlerActivity",
-        "com.kwad.sdk.api.proxy.app.BaseFragmentActivity$",
-        "com.huawei.openalliance.ad.activity.",
-        "com.acse.ottn.activity.",
-        "com.byted.live.lite.Activity_",
-        "com.bytedance.android.openliveplugin.stub.activity.StubActivity$",
-        "com.bytedance.sdk.openadsdk.core.activity.base.TT",
-        "com.yfanads.android.core.FeedbackProxyActivity",
-        "com.yfanads.android.qapp.DummyActivity"
+      "excludeActivityIds": [
+        ".mvi.run",
+        ".mvi.sport",
+        ".mvi.indoor",
+        ".mvi.ai",
+        ".mvi.exam",
+        ".mvi.course",
+        ".mvi.home.plan",
+        ".mvi.home.SportProgressActivity",
+        ".activity.RunPlanActivity",
+        ".hybrid.ui",
+        ".mvi.tice",
+        ".mvi.teachplan",
+        ".mvi.roll",
+        ".mvi.extra",
+        ".mvi.appeal",
+        ".mvi.survey",
+        ".mvi.competition",
+        ".mvi.notice",
+        ".mvi.dynamic",
+        ".mvi.me",
+        ".mvi.setting",
+        ".mvi.choose",
+        ".mvi.register",
+        ".mvi.login",
+        ".mvi.tourist",
+        ".mvi.wearable",
+        ".activity.mine",
+        ".mvi.home.InterestLabelActivity",
+        ".mvi.home.RankingListActivity",
+        ".mvi.home.rank",
+        ".mvi.CustomWebViewActivity",
+        ".mvi.WebViewActivity",
+        ".mvi.WebViewGameActivity",
+        ".mvi.VideoPlayActivity",
+        ".mvi.FileReaderActivity",
+        ".mvi.ImageViewerActivity",
+        ".mvi.MultiImageSelectorActivity",
+        ".hybrid.demo",
+        ".utils.qrcode",
+        ".wxapi",
+        ".mvi.splash.SystemUpgradeActivity"
       ],
       "matchRoot": true,
-      "forcedTime": 10000,
+      "forcedTime": 30000,
       "actionCd": 1500,
       // 不加 matchTime / actionMaximum / resetMatch：弹窗随时可能出现。
       // desc 分支不符合 fastQuery 规定格式，本组刻意不开 fastQuery。
