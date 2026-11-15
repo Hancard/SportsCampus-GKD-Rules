@@ -51,7 +51,30 @@
 //  另：官方 selector#attr 确认并列 [] 是同一节点 AND（[a][b] == [a&&b]），
 //    optimize#rule-format 复核组 100 / 101 的 fastQuery 格式合规，均无需改动。
 //
-// === 必须保持的不变量（第六 / 九 / 十轮变异测试 + 结构回归）===
+// === 第十一轮复核（version 13，2026-11-15）===
+// 量化反查 _probe/116_round11.txt，确认三处能证明的残留缺陷：
+//  ① resetMatch:"activity" 与第九轮浮层根因冲突。官方 RawCommonProps 给出
+//    第三个值 "match"：在应用内由「不匹配界面 -> 匹配界面」时重置规则；而
+//    "activity" 只在 activity 刷新时重置。第九轮已证实插屏是叠在宿主 Activity
+//    上的 PopupWindow / DialogFragment 浮层，第八轮证实同屏队列轮播
+//    （showMaxCacheAds / NextAd / adQueue）不切换 Activity。组 100/102 一旦因
+//    matchTime 60000 或 actionMaximum 4/6 休眠，在同一宿主内就再也不会被唤醒；
+//    forcedTime 只保证「开始匹配后」的主动查询，不能唤醒休眠规则（第十轮
+//    10000->30000 只是延长轮询）。两组改 resetMatch:"match"，以「广告关闭后
+//    下一条出现」为重置条件；唤醒会重新计算次数，由 actionCd 限流。
+//  ② desc* 分支缺长度上限。resources.arsc 全局字符串池 29309 条，含「关闭」
+//    14 条其中 8 条 length>12（如「考勤期间请勿关闭程序…」）、含「广告」22 条
+//    其中 4 条>12（如激励视频「仅需再浏览 N 秒广告，即可领取奖励」、会员页
+//    「无广告纯净体验」）。第十轮只给 text* 加了长度上限，desc* 两支都没加：
+//    组 102 命中即 back、组 103 命中即 click。两支补 desc.length<=12，与 text
+//    分支对齐，也把激励视频长文案挡在红线外。
+//  ③ README 第二轮 / 第五轮章节仍用现在时断言「组 101 的 fastQuery:true 是无效
+//    配置」「刻意不开 fastQuery」，与第九轮拆分后的实际配置直接矛盾；另有
+//    「85 分支」应为 78。第十一轮同步为历史叙述并给出当前状态。
+//  另复核两处无需改动的官方语义：selector#attr 明确 && 优先级高于 ||，混用
+//    合法；node#string 确认 desc 是 string、desc.length 是合法属性。
+//
+// === 必须保持的不变量（第六 / 九 / 十 / 十一轮变异测试 + 结构回归）===
 //  · 组 101 不得加 matchTime / actionMaximum / resetMatch：它常驻任意 Activity，
 //    加窗口会重现「首页弹窗在任意时刻出现却拦不住」。
 //  · 组 101 必须保留 actionCd 1500 与选择器末尾 [visibleToUser=true]。
@@ -61,6 +84,9 @@
 //  · 组 103 不得加 text*="跳过"（与组 100 必然连点开屏按钮）。
 //  · 所有组必须保留 matchRoot:true 与 forcedTime:30000（轮播第 2/3 条）。
 //  · 组 102 不得重新引入 text*="立即领取" / text*="滑动查看详情"（误按返回键）。
+//  · 组 100/102 保留 resetMatch:"match"，不得退回 activity（浮层轮播休眠后
+//    无法唤醒）或 app（第四轮：同会话第二个广告位漏拦）。
+//  · 组 102/103 的 desc* 分支必须带 desc.length<=12（长业务 / 激励视频文案误触）。
 // ============================================================================
 
 {
@@ -123,9 +149,12 @@
       "forcedTime": 30000,
       // 队列轮播（dex: showMaxCacheAds / adCache / NextAd / adQueue）同一次
       // Activity 内会连出多条广告，故 60 秒窗口 + 4 次上限；actionCd < matchTime。
+      // 第十一轮：插屏浮层不切换 Activity，'activity' 重置条件在休眠后不会触发；
+      // 官方 RawCommonProps 的 'match' 以「不匹配界面 -> 匹配界面」重置，正对应
+      // 广告关闭后下一条出现。唤醒时重新计算次数，靠 actionCd 1500 限流。
       "matchTime": 60000,
       "actionMaximum": 4,
-      "resetMatch": "activity",
+      "resetMatch": "match",
       "actionCd": 1500,
       "rules": [
         {
@@ -206,10 +235,13 @@
       // 第十轮：删掉 text*="立即领取" 与 text*="滑动查看详情"（arsc/dex 命中属
       // 业务活动文案，删白名单后按 back 会误退首页）；text*="广告" 加长度上限，
       // 只保留 SDK 专属互动引导语（dex 中各仅 1 处）。
+      // 第十一轮：desc*="广告" 补 desc.length<=12 —— arsc 里「仅需再浏览 N 秒
+      // 广告，即可领取奖励」等长文案属激励视频 / 会员页，命中即 back 会误触；
+      // resetMatch 改 match，让同一宿主 Activity 内的轮播浮层能唤醒休眠规则。
       "matchRoot": true,
       "forcedTime": 30000,
       "matchTime": 60000,
-      "resetMatch": "activity",
+      "resetMatch": "match",
       // 业务黑名单 + 启动入口（返回键退出 App）。
       "excludeActivityIds": [
         ".mvi.run",
@@ -261,7 +293,7 @@
         {
           "key": 0,
           "action": "back",
-          "matches": "[text*=\"广告\"&&text.length<=12 || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\"][visibleToUser=true]"
+          "matches": "[text*=\"广告\"&&text.length<=12 || desc*=\"广告\"&&desc.length<=12 || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\"][visibleToUser=true]"
         }
       ]
     },
@@ -275,6 +307,8 @@
       // 误点风险由「业务页被排除 + actionCd + visibleToUser」共同约束。
       // 承接 contentDescription 含「关闭」、「N秒 | 关闭」短文案与 5 种叉号变体；
       // 刻意不含任何 *reward* 激励视频、广告落地页与下载代理。
+      // 第十一轮：desc*="关闭" 补 desc.length<=12 —— arsc 里「考勤期间请勿关闭
+      // 程序…」等长业务提示会被命中并 click；与 text 分支的 <=8 同属长度约束。
       "excludeActivityIds": [
         ".mvi.run",
         ".mvi.sport",
@@ -326,7 +360,7 @@
       "rules": [
         {
           "key": 0,
-          "matches": "[desc*=\"关闭\" || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
+          "matches": "[desc*=\"关闭\"&&desc.length<=12 || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
         }
       ]
     }

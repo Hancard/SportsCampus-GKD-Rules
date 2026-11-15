@@ -27,7 +27,7 @@
 {
   "id": 248879535,
   "name": "运动世界校园 7.3.93 补充规则",
-  "version": 12,
+  "version": 13,
   "author": "Hancard",
   "supportUri": "https://github.com/Hancard/SportsCampus-GKD-Rules",
   "categories": [],
@@ -88,7 +88,7 @@
           "forcedTime": 30000,
           "matchTime": 60000,
           "actionMaximum": 4,
-          "resetMatch": "activity",
+          "resetMatch": "match",
           "actionCd": 1500,
           "rules": [
             {
@@ -160,7 +160,7 @@
           "matchRoot": true,
           "forcedTime": 30000,
           "matchTime": 60000,
-          "resetMatch": "activity",
+          "resetMatch": "match",
           "excludeActivityIds": [
             ".mvi.run",
             ".mvi.sport",
@@ -211,7 +211,7 @@
             {
               "key": 0,
               "action": "back",
-              "matches": "[text*=\"广告\"&&text.length<=12 || desc*=\"广告\" || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\"][visibleToUser=true]"
+              "matches": "[text*=\"广告\"&&text.length<=12 || desc*=\"广告\"&&desc.length<=12 || text*=\"上滑查看更多\" || text*=\"上滑浏览\" || text*=\"摇一摇查看\"][visibleToUser=true]"
             }
           ]
         },
@@ -267,7 +267,7 @@
           "rules": [
             {
               "key": 0,
-              "matches": "[desc*=\"关闭\" || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
+              "matches": "[desc*=\"关闭\"&&desc.length<=12 || text*=\"关闭\"&&text.length<=8 || text=\"×\" || text=\"✕\" || text=\"✖\" || text=\"✗\" || text=\"╳\"][visibleToUser=true]"
             }
           ]
         }
