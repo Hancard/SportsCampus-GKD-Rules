@@ -396,7 +396,7 @@ Activity、4865 个 `type=id` 名、订阅与规则 groups 深度比对、每个
 | `resetMatch` 合法值 | `RawCommonProps`：`"activity" \| "match" \| "app"`，默认 `activity`；且「刷新 activity 并不代表 activityId 变化」 | 第四轮改用 `activity` 成立 |
 | `action: "back"` | `RawRuleProps` 的 action 枚举明确含 `back` | 组 102 兜底动作合法 |
 | `excludeActivityIds` 优先级 | `RawAppRuleProps`：「优先级高于 activityIds」 | 组 102 声明 24 项却只有 23 项生效，删掉被遮蔽的同名冗余项 |
-| `fastQuery` 格式 | `optimize#rule-format` 允许 `[id=]` / `[vid=]` / `[text=]` / `[text^=]` / `[text*=]` / `[text$=]` 及其 `\|\|` 组合；「只要有一个分支不符合，整个 `\|\|` 表达式就必须停用全局快速查询」 | 第五轮时组 100 的 `[text*="跳过"]` 合规、`fastQuery:true` 有效，组 101 因 `desc*="关闭"` 必须全树遍历而刻意不开；**第九轮拆分后组 101 已启用 `fastQuery:true`**（当前状态见「规则组」表） |
+| `fastQuery` 格式 | `optimize#rule-format` 允许 `[id=]` / `[vid=]` / `[text=]` / `[text^=]` / `[text*=]` / `[text$=]` 及其 `\|\|` 组合；「只要有一个分支不符合，整个 `\|\|` 表达式就必须停用全局快速查询」。**第十二轮补**：判据是「所有**末尾属性选择器**的**第一个属性选择表达式**」，官方示例 `C[id='x'][childCount=2]` ✅、`C[id='x' \|\| text*='ikun'][childCount=2]` ✅、`C[childCount=2][id='x']` ❎ —— 连续 `[]` 时后续属性不影响资格 | 第五轮时组 100 的 `[text*="跳过"]` 合规、`fastQuery:true` 有效，组 101 因 `desc*="关闭"` 必须全树遍历而刻意不开；**第九轮拆分后组 101 已启用 `fastQuery:true`**（当前状态见「规则组」表）。第十二轮实测复核：组 100 / 101 的连续 `[]` 均合规，不需要合并成单个 `[]` |
 | 组间节点互斥 | GKD 无跨组互斥机制 | README 原先两处「不会命中同一节点」的断言不成立，已改为职责互补说明并补排障归因 |
 
 另修正一批把历史参数写成现在时的注释与段落（组 102 注释里 16 处
@@ -642,9 +642,12 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 102 | 不得重新引入 `text*="立即领取"` / `text*="滑动查看详情"` | 业务活动按钮触发 `back`，误退首页 |
 | 102 / 103 | `desc*` 分支保留 `desc.length<=12` | arsc 中「考勤期间请勿关闭程序…」「仅需再浏览 N 秒广告，即可领取奖励」等长业务 / 激励文案会触发 `click` / `back` |
 | 全部 | `excludeActivityIds` 保留 41 项业务前缀，不收激励视频 / 跑步 / 成绩页 | 触碰红线 |
+| 全部 | 两份 JSON5 必须可被严格解析、**无重复键**，且订阅 `groups` 与主规则逐字段相等 | 重复字段被 GKD 静默覆盖，474 项旧校验却全部放过；订阅与本地规则分叉会让两种导入方式行为不一致 |
+| 100 / 101 | `fastQuery` 的**首个** `[]` 保持 `[id=]` / `[vid=]` / `[text*=]` 格式，连续 `[]` 的后续属性可保留 | 把 `text.length` / `visibleToUser` 挪到第一个 `[]`，整个快速查询会失效 |
 
 改完请重新生成订阅（规则注释不会进订阅，但 `groups` 必须与主规则逐字段一致）
-并让 `version` 递增；本地粘贴方式不受 `version` 影响。
+并让 `version` 递增；本地粘贴方式不受 `version` 影响。**只改注释 / 文档时
+不升 `version`**：GKD 按 `version` 判定更新，规则内容未变就无需让用户重拉。
 
 每次改动后先走一遍完整跑步流程，确认计时 / 轨迹 / 成绩正常，再叠加上游订阅。
 
@@ -720,6 +723,50 @@ manifest 里不存在，写成它会导致规则永不触发。
   可把 `forcedTime` 调小或只保留组 101 的轮询。官方
   `RawCommonProps#forcedTime` 只保证「开始匹配后的一段时间内」主动查询，常驻规则
   的计时起点不会因轮播刷新而重置，所以宁可取稍大的窗口。
+
+## 第十二轮：独立元审计（2026-11-16，规则内容未改）
+
+前十轮每轮都在改拦截能力，这轮换了个方向：不再推演官方语义，而是用**独立于
+既有校验脚本的机器验证**（`_probe/121_round12_meta_audit.py`，137 项）回头查
+「我们凭什么相信 v13 是对的」。结论：**规则本体没有找到可证明的缺陷**，
+因此本次不升 `version`、不改任何 `matches` / 组参数。
+
+| 检查 | 方法 | 结果 |
+|---|---|---|
+| 语法 | 剥离注释后用严格 `json.loads` 解析两份 JSON5，而非自写正则 | 主规则 20420 B / 订阅 12152 B 均可解析 |
+| 重复键 | `object_pairs_hook` 逐层收集（重复键会被 GKD 静默覆盖） | 两份均无重复键 |
+| 订阅等价 | 对 `groups` 做 `sort_keys` 序列化后比 SHA-256 | 完全一致（`4dfb488cf1aa`） |
+| 字段 | 对照官方 `RawCommonProps` / `RawGroupProps` / `RawRuleProps` 字段集，查未知字段、类型、值域 | 无未知字段；`resetMatch` 值 `match` 在官方枚举内 |
+| 选择器 | 还原 JSON 转义后查 `[]` / `()` / 引号配平、空 `\|\|` / `&&` 分支 | 4 条全部通过 |
+| 资源 ID | 78 个 `vid` 逐个对照 `62_arsc_id_names.txt`（arsc `type=id` 池 4865 项） | 全部命中，无重复 |
+| 下发 | 实测 raw / cdn / fastly / gcore 四个节点 | 均返回 v13、12152 B、78 个 `vid` |
+
+同时复核两处**被怀疑但不是缺陷**的官方语义：
+
+- `RawCommonProps#resetMatch` 的类型字面量确为 activity / match / app 三者之一，
+  第十一轮改用 `match` 合法。
+- `optimize#rule-format` 的判据是「所有**末尾属性选择器**的**第一个属性选择
+  表达式**」，并给出 `C[id='x'][childCount=2]` ✅ 与
+  `C[id='x' \|\| text*='ikun'][childCount=2]` ✅。所以组 100 的
+  `[text*="跳过"][text.length<20][visibleToUser=true]` 与组 101 的
+  `[78 个 vid \|\| ...][visibleToUser=true]` 这类**连续 `[]`** 都保留快速查询资格，
+  不需要合并成单个 `[]`。第二轮曾把组 101 误判为「fastQuery 无效配置」，
+  此条依据写进上表，避免再次误关。
+
+真正修掉的是**校验工具链自己**的三个缺口：
+
+1. 解析段用 `chk(True, "JSON5 语法解析")` 作成功哨兵，且后续 20 多条断言同处
+   `try` 块 —— 任意一条抛异常都会被同一个 `except` 吞掉并误报成「语法解析失败」。
+   现改为 `try` 只包 `json.loads`，后续断言在 `if sub:` 内独立执行。
+2. `json.loads` 未启用 `object_pairs_hook`，**重复键会被静默覆盖**且旧的 474 项
+   校验全部放过。现对主规则与订阅各加一条重复键断言。
+3. 补「fastQuery 首表达式格式」与「README 官方依据」两条回归断言，把本轮
+   核查结论钉死；订阅头注释补上 v12 / v13 四节点即时同步的实测，避免只列
+   滞后案例造成「jsdelivr 总是滞后」的偏差。
+
+> 本轮**没有**新增 `vid`、放宽窗口、改 `resetMatch` 或调整黑名单。若 v13 在真机上
+> 仍漏拦，静态推导已经穷尽：请在弹窗还在屏幕上时抓 GKD 快照
+> （`i.gkd.li/i/...`，先脱敏）连同触发记录的 `activityId` 发来。
 
 ## 红线
 
