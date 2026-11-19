@@ -40,6 +40,19 @@ https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 > 因为两者本来就是同一份文件。**若 raw 确实打不开，请改用方式 B 本地粘贴**，
 > 或临时用 jsDelivr 节点但务必核对 `version`（可能滞后数小时到一天）。
 
+> ⚠️ **不要把 GitHub 网页地址复制到订阅框**：仓库主页
+> `github.com/Hancard/SportsCampus-GKD-Rules` 与文件页
+> `github.com/Hancard/SportsCampus-GKD-Rules/blob/main/subscription.json5`
+> 返回的都是网页 HTML（2026-11-18 本机实测 `200 / text/html / 312137 B`，
+> 首字符 `<!DOCTYPE html>`），GKD 拿去解析必然报
+> **`Expected a JSON5 value at index 0`**，与规则文件本身无关。
+> **不要复制**浏览器地址栏里带 `/blob/` 的地址；导入前先把链接贴到手机浏览器
+> 地址栏自检：正确结果是一整页纯文本、开头 `// ===` 注释、紧接着 `{`，
+> 看到 GitHub 页面、登录页或 404 就是链接填错了。
+> 填写位置是「订阅 → + → **远程订阅链接**」；若在「本地订阅 → 应用规则」框里
+> 粘一条 URL，同样会报 `index 0`。链接要一口气复制到 `.json5` 结尾，
+> 前后别带空格、换行或中文（从聊天窗口复制最容易多带字符）。
+
 > **用哪个链接导入，后续就一直用哪个链接自动更新**（`version 6` 起）。此前订阅文件里
 > 硬编码了 `updateUrl` 指向 raw，导致用备用链接导入的用户在 GKD 自动检查更新时被
 > 强制覆盖成 raw（在国内部分网络下可能不通），表现是「仓库明明更新了，广告照旧」。官方
@@ -660,6 +673,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 |---|---|---|
 | 支付宝 App 的开屏 / 弹窗广告拦不住 | 本订阅按包名隔离，`apps` 只含运动世界校园 | 不是 bug；导入上游订阅（含支付宝 44 组），见「其它 App 的广告」；注意别误关支付宝 `13 全屏广告-弹窗广告` |
 | 导入报 `Unclosed array at index ...` / `Unclosed object` / `Expecting ',' delimiter` | **粘贴内容被截断**，末尾缺 `}` `]` `}` | 改用方式 A 订阅链接；或重新全选复制，确认末尾有 `// === END OF FILE ===`。不要用聊天记录里的旧版文本 |
+| 导入报 **`Expected a JSON5 value at index 0`** | GKD 拿到的第一个字符就不是 JSON5：填成了 GitHub 网页地址（仓库主页或 `/blob/` 文件页，返回 `text/html`，首字符 `<!DOCTYPE html>`）；或把 URL 粘进了「本地订阅 → 应用规则」框；或链接前后带了空格、换行、中文 | 先把链接贴到手机浏览器地址栏自检，必须是纯文本且开头 `// ===` 注释紧接着 `{`；确认填在「远程订阅链接」；用上面的 raw 链接重新完整复制到 `.json5` 结尾。文件本身无 BOM、前置 `//` 注释合法、末尾闭合，**不需要改规则或升版本** |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
 | 仓库已更新但广告照旧、规则内容没变 | 用 `*.jsdelivr.net` 任一节点导入，每次发版后缓存滞后数小时到一天 | 在 GKD 订阅页核对版本号；**删掉订阅**，改用 `raw.githubusercontent.com` 重新导入，`?v=` 参数不能绕过缓存 |
 | 主链接打不开，换 `github.com/.../raw/main/` 也打不开 | 该路径最终仍 302 到 `raw.githubusercontent.com`，不是独立线路（2026-11-12 本机实测 `github.com` 3/3 次代理 502） | 改用**方式 B 本地粘贴**；或临时用 jsDelivr 节点并核对 `version` |
