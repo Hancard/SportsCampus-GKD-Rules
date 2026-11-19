@@ -38,7 +38,8 @@ https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 > 连续 3 次代理返回 `CONNECT tunnel failed, response 502`（`http=000`），
 > 而 `raw.githubusercontent.com` 稳定 `200`。当时 `version 8/9` 能同步只是
 > 因为两者本来就是同一份文件。**若 raw 确实打不开，请改用方式 B 本地粘贴**，
-> 或临时用 jsDelivr 节点但务必核对 `version`（可能滞后数小时到一天）。
+> 或使用下方实测可用的 xget 备用链接；**不要用 jsDelivr 节点救急**——
+> 它在每次发版后会重新滞后数小时到一天（证据见下方「不推荐」段落）。
 
 > ⚠️ **不要把 GitHub 网页地址复制到订阅框**：仓库主页
 > `github.com/Hancard/SportsCampus-GKD-Rules` 与文件页
