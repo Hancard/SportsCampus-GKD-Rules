@@ -73,8 +73,22 @@ https://github.com/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
 > 2026-11-13 第九轮再次实测：`version 11` 推送后 `raw` 已返回 12722 字节的 v11，
 > 而 `cdn` / `fastly` / `gcore` **三个节点仍全部停在 `version 10`**（10356 字节）。
 > **导入后请在 GKD 订阅页核对版本号是否为 `version: 13`**；不是就换上面的
-`raw.githubusercontent.com` 链接重新导入（`github.com` 入口只是同一文件的 302 跳板，
-不能作为另一条独立线路）。
+> `raw.githubusercontent.com` 链接重新导入（`github.com` 入口只是同一文件的 302 跳板，
+> 不能作为另一条独立线路）。
+
+国内直连备用（2026-11-19 实测）：
+
+```
+https://xget.xi-xu.me/gh/Hancard/SportsCampus-GKD-Rules/raw/main/subscription.json5
+```
+
+> 当 `raw.githubusercontent.com` 在当前网络下超时或 TLS 握手失败时，可用上面这条
+> 备用链接导入。本机实测 `200 / text/plain / 12457 B`，内容里的 `version: 13`，
+> 与仓库 `subscription.json5` 逐字节一致；同轮 `cdn` / `fastly` / `gcore` 三个
+> jsDelivr 节点也返回 12457 B / `version 13`，但**每次发版后仍会重新滞后**，
+> 因此依旧不作为导入源。`raw.gitmirror.com` 实测 TLS 握手失败，不可用。
+> 注意订阅没有 `updateUrl`，**用哪条链接导入，GKD 以后就一直用哪条检查更新**；
+> 等 raw 恢复通畅后，建议删掉订阅、换回主链接重新导入。
 
 导入后 GKD 会显示订阅名「运动世界校园 7.3.93 补充规则」与 **4 个规则组（100/101/102/103）**。
 后续更新规则无需重新粘贴，GKD 会按 `version` 自动拉取（当前 `version: 13`）。
@@ -676,7 +690,7 @@ manifest 里不存在，写成它会导致规则永不触发。
 | 导入报 **`Expected a JSON5 value at index 0`** | GKD 拿到的第一个字符就不是 JSON5：填成了 GitHub 网页地址（仓库主页或 `/blob/` 文件页，返回 `text/html`，首字符 `<!DOCTYPE html>`）；或把 URL 粘进了「本地订阅 → 应用规则」框；或链接前后带了空格、换行、中文 | 先把链接贴到手机浏览器地址栏自检，必须是纯文本且开头 `// ===` 注释紧接着 `{`；确认填在「远程订阅链接」；用上面的 raw 链接重新完整复制到 `.json5` 结尾。文件本身无 BOM、前置 `//` 注释合法、末尾闭合，**不需要改规则或升版本** |
 | 导入成功但只有 2 个规则组 | 复制的是修复前的旧版本（没有组 102） | 从 `main` 分支重新取文件；旧版还含本包不存在的 `openadsdk.stub`，规则不会触发 |
 | 仓库已更新但广告照旧、规则内容没变 | 用 `*.jsdelivr.net` 任一节点导入，每次发版后缓存滞后数小时到一天 | 在 GKD 订阅页核对版本号；**删掉订阅**，改用 `raw.githubusercontent.com` 重新导入，`?v=` 参数不能绕过缓存 |
-| 主链接打不开，换 `github.com/.../raw/main/` 也打不开 | 该路径最终仍 302 到 `raw.githubusercontent.com`，不是独立线路（2026-11-12 本机实测 `github.com` 3/3 次代理 502） | 改用**方式 B 本地粘贴**；或临时用 jsDelivr 节点并核对 `version` |
+| 主链接打不开，换 `github.com/.../raw/main/` 也打不开 | 该路径最终仍 302 到 `raw.githubusercontent.com`，不是独立线路（2026-11-12 本机实测 `github.com` 3/3 次代理 502；2026-11-19 实测 raw 本机超时 / TLS 握手失败） | 改用「导入」章节实测可用的 **xget 备用链接**，或改用**方式 B 本地粘贴**；不要用 jsDelivr 节点救急（每次发版后会重新滞后） |
 | 订阅页停在旧 `version`、几秒后弹窗仍拦不住 | 缓存节点还没追上 `main`（v9 发布后仍停在 `version 8`） | 同上，删掉重新导入；`version 6` 及更早不含第四轮的时序修复 |
 | 京东 60 元券 /「上滑查看详情」弹窗没跳掉 | 仍是 `version 1/2`：缺京东 `vid`，或末尾 `[clickable=true]` 把非 clickable 的关闭按钮整批筛掉 | 确认订阅已刷新到 `version 13`；仍无效就抓快照看真实 `vid` / `activityId` |
 | **同一屏连出第 2 / 3 条广告就拦不住**（toast「即将播放下一条广告」） | `version 9` 及更早：组 100 / 102 的 20 秒窗口与 2 / 3 次上限在轮播时先休眠，且组 101 缺该电商素材的 smile 关闭 `vid` | 升到 `version 13`；仍漏就在 toast 出现后立刻抓快照，看新广告的 `activityId` 与圆形 `×` 的 `vid` / `text` / `desc` |
