@@ -118,13 +118,20 @@ GKD → 订阅 → 本地订阅 → 应用规则 → + → 粘贴整段 JSON5 �
 四个组都不再使用 `activityIds` 白名单。组 100 与组 101 是
 **职责互补而非节点互斥**：若某个跳过按钮同时带 `text*="跳过"` 与组 101 的 skip 类
 `vid`，两组可能各点一次（见「真机排障」）。主规则仍建议用持续维护的
-[`Lin-arm/GKD_subscription`](https://github.com/Lin-arm/GKD_subscription)，任选一个订阅地址：
+[`Lin-arm/GKD_subscription`](https://github.com/Lin-arm/GKD_subscription)。
+2026-11-21 实测可用的订阅地址：
 
 ```
-https://gkd667.vv.ax/gkd.json5
-https://gkd-subscription-667.pages.dev/gkd.json5
 https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
+https://xget.xi-xu.me/gh/Lin-arm/GKD_subscription/raw/main/dist/gkd.json5
+https://gkd-subscription-667.pages.dev/gkd.json5
 ```
+
+> 实测：`raw` / `xget` / `pages.dev` 三条均 `200`、同为 **1391767 B**
+> （当前 `v640`）；旧短链 `gkd667.vv.ax` 已返回 **`403 / 17 B`**，不能再用于导入。
+> `cdn.jsdelivr.net/gh/Lin-arm/GKD_subscription@main/dist/gkd.json5` 返回
+> `200` 但只有 **1389589 B**，比官方少 2178 B，属于**缓存滞后**，不要拿它核对版本。
+> 上游禁止在国内平台再分发，本仓库只给链接、不复制其内容。
 
 > 不要使用已归档停更的 `gkd-kit/subscription`：其中的 Activity 名属于重构前的旧结构
 > （`activity.SplashActivity` / `ui.AdActivity`），在 7.3.93 上会全部失配。
