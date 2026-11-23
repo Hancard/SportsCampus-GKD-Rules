@@ -119,7 +119,7 @@ GKD → 订阅 → 本地订阅 → 应用规则 → + → 粘贴整段 JSON5 �
 **职责互补而非节点互斥**：若某个跳过按钮同时带 `text*="跳过"` 与组 101 的 skip 类
 `vid`，两组可能各点一次（见「真机排障」）。主规则仍建议用持续维护的
 [`Lin-arm/GKD_subscription`](https://github.com/Lin-arm/GKD_subscription)。
-2026-11-23 实测可用的订阅地址：
+2026-11-24 实测可用的订阅地址（三条**逐条单独请求**，不是只测第一条）：
 
 ```
 https://raw.githubusercontent.com/Lin-arm/GKD_subscription/main/dist/gkd.json5
@@ -127,10 +127,12 @@ https://xget.xi-xu.me/gh/Lin-arm/GKD_subscription/raw/main/dist/gkd.json5
 https://gkd-subscription-667.pages.dev/gkd.json5
 ```
 
-> 实测：`raw` / `xget` / `pages.dev` 三条均 `200`、同为 **1394060 B**
+> 实测（2026-11-24）：`raw` / `xget` / `pages.dev` 三条均 `200`、同为 **1394060 B**
 > （当前 `v642`）；旧短链 `gkd667.vv.ax` 已返回 **`403 / 17 B`**，不能再用于导入。
-> `cdn.jsdelivr.net/gh/Lin-arm/GKD_subscription@main/dist/gkd.json5` 返回
-> `200` 但只有 **1393113 B**，比官方少 947 B，属于**缓存滞后**，不要拿它核对版本。
+> `cdn.jsdelivr.net/gh/Lin-arm/GKD_subscription@main/dist/gkd.json5` 这次也返回
+> `200`、也是 **1394060 B**，与官方**完全相同（差 0 B）**——但同一条链接在
+> 2026-11-23 还比官方少 947 B，隔一天内容就换了一份，**缓存是否滞后不可预测**，
+> 所以始终不要拿它核对版本（历史滞后记录见下文「备用订阅链接的三时点实测」）。
 > 上游禁止在国内平台再分发，本仓库只给链接、不复制其内容。
 >
 > ⚠️ **上面的版本号与字节数只是标注日期的当日快照**：上游订阅持续更新，本仓库
